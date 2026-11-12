@@ -30,5 +30,8 @@ jobs:
           node --check /tmp/family-baby-Code.js
           grep -q 'function doGet(e)' apps-script/Code.gs
           grep -q 'function generateEnrollmentCodes()' apps-script/Code.gs
+      - name: Check Apps Script permission manifest
+        run: |
+          node -e "const m=require('./apps-script/appsscript.json'); if(m.oauthScopes.length!==1 || m.oauthScopes[0]!=='https://www.googleapis.com/auth/spreadsheets') process.exit(1);"
       - name: Validate presets, month dates and cost calculations
         run: node tests/check-presets.cjs
