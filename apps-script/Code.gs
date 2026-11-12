@@ -17,10 +17,12 @@ function doGet(e) {
   if(!origins.length)return HtmlService.createHtmlOutput('<p>APP_ORIGINS를 먼저 설정하세요.</p>');
   const nonce=String((e&&e.parameter&&e.parameter.bridge_nonce)||'');
   if(!/^[A-Za-z0-9+/]{22}==$/.test(nonce))return HtmlService.createHtmlOutput('<p>가족 앱을 통해 접근해 주세요.</p>');
-  const template=HtmlService.createTemplateFromFile('Bridge');
-  template.nonceJson=JSON.stringify(nonce);
-  template.originsJson=JSON.stringify(origins).replace(/</g,'\\u003c');
-  return template.evaluate().setTitle('Encrypted Family Data Bridge').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  // 단일 파일 설치: HTML 파일을 추가로 만들 필요 없이 Bridge 화면을 Code.gs에서 생성합니다.
+  const html=BRIDGE_DOCUMENT
+    .replace('__ORIGINS_JSON__',JSON.stringify(origins).replace(/</g,'\\u003c'))
+    .replace('__NONCE_JSON__',JSON.stringify(nonce));
+  return HtmlService.createHtmlOutput(html).setTitle('Encrypted Family Data Bridge')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function bridgeRequest(req) {
@@ -135,3 +137,23 @@ function generateEnrollmentCodes(){
   Logger.log(pair+' : '+code);
  }
 }
+
+/** Bridge.html을 별도 생성할 필요가 없는 단일 파일 웹앱 버전. */
+const BRIDGE_DOCUMENT=String.raw`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Encrypted Bridge</title></head><body>
+<p>암호화 저장 연결용 페이지입니다. 가족 앱에서 접근해 주세요.</p>
+<script>
+'use strict';
+(function(){
+ const ALLOWED_ORIGINS=__ORIGINS_JSON__;
+ const NONCE=__NONCE_JSON__;
+ // 등록된 출처의 부모 창에만 연결 완료를 알립니다.
+ ALLOWED_ORIGINS.forEach(origin=>window.top.postMessage({kind:'BABY_PREP_BRIDGE_READY',nonce:NONCE},origin));
+ window.addEventListener('message',function(event){
+  if(event.source!==window.top||!ALLOWED_ORIGINS.includes(event.origin))return;
+  const data=event.data||{};
+  if(data.kind!=='BABY_PREP_BRIDGE_REQUEST'||data.nonce!==NONCE||!Number.isSafeInteger(data.id)||!data.req)return;
+  const reply=(result,error)=>event.source.postMessage({kind:'BABY_PREP_BRIDGE_REPLY',nonce:NONCE,id:data.id,result,error},event.origin);
+  google.script.run.withSuccessHandler(result=>reply(result,null)).withFailureHandler(err=>reply(null,(err&&err.message)||'서버 오류')).bridgeRequest(data.req);
+ });
+})();
+</script></body></html>`;
