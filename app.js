@@ -88,6 +88,13 @@
  const addMonthsClamped=(date,n)=>{const year=date.getFullYear(),month=date.getMonth()+Number(n),day=date.getDate();const first=new Date(year,month,1,12);const last=new Date(first.getFullYear(),first.getMonth()+1,0,12).getDate();first.setDate(Math.min(day,last));return first};
  const daysUntil=date=>date?Math.round((dateValue(date)-dateValue(today()))/86400000):null;
  const isToddler=()=>S.data?.profile==='toddler';
+ const ageInMonths=iso=>{
+   const birth=dateValue(iso),now=dateValue(today());
+   if(!birth||!now||birth>now)return null;
+   let months=(now.getFullYear()-birth.getFullYear())*12+now.getMonth()-birth.getMonth();
+   if(addMonthsClamped(birth,months)>now)months--;
+   return Math.max(0,months);
+ };
  const nextPeriodicDate=i=>{
    const now=dateValue(today());if(!now)return '';
    const last=String(i.lastDoneDate||'');
@@ -283,14 +290,14 @@
  function renderNav(){const tabs=[['home','⌂','홈'],['all','☑','체크'],['timeline','▤','일정'],['settings','⚙','설정']];const active=S.route==='budget'?'home':S.route==='reco'?'settings':S.route.startsWith('section:')?'all':S.route;byId('bottomNav').innerHTML=tabs.map(([route,icon,label])=>`<button type="button" class="nav-btn ${active===route?'active':''}" data-action="route" data-route="${route}"><span>${icon}</span>${label}</button>`).join('')}
  function renderHome(){const B=budget(),pct=B.items.length?Math.round(100*B.done/B.items.length):0,due=S.data.settings.dueDate,diff=daysUntil(due),alerts=alertItems(),toddler=isToddler();
    const heroTitle=toddler?'육아 준비 로드맵':'출산 준비 현황';
-   const label=toddler?`${escape(S.data.settings.babyName||'우리 아이')} · ${due?'생후 '+Math.max(0,-diff)+'일':'설정에서 출생일을 등록하세요'}`:(due?`출산예정일 ${escape(due)}`:'먼저 출산예정일을 등록하세요');
-   const dText=toddler&&due?`${Math.max(0,-diff)}일`:due?(diff>=0?'D-'+diff:'D+'+Math.abs(diff)):(toddler?'📅':'D-?');
+   const label=toddler?`${escape(S.data.settings.babyName||'우리 아이')} · ${due?'아이 프로필 설정 완료':'설정에서 아이 출생일 등록'}`:(due?`출산예정일 ${escape(due)}`:'먼저 출산예정일을 등록하세요');
+   const dText=toddler&&due?`${ageInMonths(due)}개월`:due?(diff>=0?'D-'+diff:'D+'+Math.abs(diff)):(toddler?'📅':'D-?');
    const firstSection=toddler?'구매·예산':'출산 가방';const scheduleSection=toddler?'검진·의료 일정':'서류·일정';
-   return `<div class="hero"><div class="inline"><div><h2>${heroTitle}</h2><p>${label}</p></div><div class="big">${dText}</div></div><div class="progress-track"><div style="width:${pct}%"></div></div><div class="progress-caption"><span>현재 준비 현황</span><strong>${B.done}/${B.items.length}개 · ${pct}%</strong></div></div>
+   return `<div class="hero"><div class="inline"><div><h2>${heroTitle}</h2><p>${label}</p></div><div class="big">${dText}</div></div></div>
     <div class="inline"><h3 class="subhead">비용 현황</h3><button class="link-button" data-action="route" data-route="budget">비용 상세 보기</button></div><div class="kpis"><div class="kpi"><span>기록된 실제 지출</span><strong>${fmt(B.spent)}</strong><small>각 항목에 입력한 실제 결제액</small></div><div class="kpi accent"><span>추가 필요 예상 비용</span><strong>${fmt(B.needed)}</strong><small>예상 비용 미입력 ${B.missing}개 별도</small></div></div>
     <div class="inline"><h3 class="subhead">⏰ 놓치기 쉬운 일정</h3><button class="link-button" data-action="route" data-route="timeline">전체 보기</button></div>
     ${due?alerts.length?`<div class="card alt">${alerts.slice(0,7).map(renderItemRow).join('')}</div>`:'<div class="card empty">14일 이내 미완료 일정이 없습니다.</div>':`<div class="help-block">${toddler?'출생일':'출산예정일'}을 입력하면 기준일 기반 일정을 자동 날짜로 변환합니다. <button class="link-button" data-action="route" data-route="settings">날짜 등록</button></div>`}
-    <div class="inline"><h3 class="subhead">빠른 시작</h3></div><div class="list-actions"><button class="primary" data-action="add" data-section="${firstSection}" data-kind="item">+ 물품 추가</button><button class="secondary" data-action="add" data-section="${scheduleSection}" data-kind="task">+ 일정 추가</button></div>
+    <div class="inline"><h3 class="subhead">빠른 시작</h3></div><div class="list-actions"><button class="primary" data-action="quick-add" data-section="${firstSection}">+ 물품 빠른 추가</button><button class="secondary" data-action="quick-add" data-section="${scheduleSection}">+ 일정 빠른 추가</button></div>
     <div class="card"><h3 class="card-title">${toddler?'📌 앞으로 준비할 일':'📋 출산 준비 체크'}</h3><p class="tiny-note">${toddler?'일상 수면·식사·양치 기록은 기존 육아 도구 모음에서 관리합니다. 이 앱은 검진·새 학기·지원금·교체 물품과 비용만 관리합니다.':'가족에게 받은 물품과 실제 구매한 물품을 구분하고, 오래된 참고 가격은 예산에서 제외합니다.'}</p></div>
     ${!S.backend?'<div class="warning">⚠ 현재는 미리보기용 로컬 모드입니다. 다른 기기와 공유되지 않습니다. 배포 설명서에 따라 Apps Script 주소를 설정해야 합니다.</div>':''}`;
  }
@@ -361,6 +368,7 @@
  async function clickAction(e){const el=e.target.closest('[data-action]');if(!el)return;const action=el.dataset.action,id=el.dataset.id,section=el.dataset.section;try{switch(action){
   case 'route':S.route=el.dataset.route;S.search='';S.filter='all';render();break;
   case 'add':openEditor(null,section,el.dataset.kind);break;
+  case 'quick-add':S.route='all';S.sectionFilter=S.data.sections.includes(section)?section:'all';S.filter='all';S.search='';render();byId('quickTitle')?.focus();break;
   case 'edit':openEditor(id);break;
   case 'delete':removeItem(id);break;
   case 'close':closeModal();break;
