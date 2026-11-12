@@ -17,7 +17,7 @@ vm.createContext(ctx);
 for(const f of ['seed.js','toddler-seed.js','benefits.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
 const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
 assert(source.includes(' init();\n})();'),'앱 시작 진입점을 찾지 못했습니다. 테스트 스크립트를 확인하세요.');
-vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus,refreshMeta,submitAuth,derive,encryptPayload,storageSet,cacheKey,refreshFromServer,Bridge};\n})();'),ctx);
+vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,babyProfileSummary,canRecommendProduct,modal,closeModal,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus,refreshMeta,submitAuth,derive,encryptPayload,storageSet,cacheKey,refreshFromServer,Bridge};\n})();'),ctx);
 const newborn=vm.runInContext('babyPrepInitialData()',ctx);
 const roadmap=vm.runInContext('babyPrepToddlerData()',ctx);
 const hooks=ctx.__testHooks;
@@ -102,6 +102,48 @@ for(const key of ['title','section','type','status','repeat','owner','acquisitio
 }
 assert(ui.modalBody.innerHTML.includes('<details class="editor-more">'),'덜 쓰는 필드는 접힌 상세 보기로 유지');
 assert(source.includes('id="quickAddForm"'),'빠른 한 줄 추가 지원');
+
+// UX 1.3.2: no product suggestion on administrative or support-benefit tasks.
+assert.equal(hooks.canRecommendProduct(probe),false,'검진·지원 일정은 제품 추천 대상이 아님');
+assert.equal(hooks.canRecommendProduct({type:'item',title:'육아 지원금 신청'}),false,'잘못 물품으로 분류된 지원금도 제외');
+const purchasing=roadmap.items.find(item=>item.type==='item'&&!/(지원|수당|검진|신청)/.test(item.title));
+assert(purchasing,'구매 검토 물품 프리셋이 있어야 함');
+assert.equal(hooks.canRecommendProduct(purchasing),true,'실제 물품은 제품 추천 제공');
+assert(!ui.modalBody.innerHTML.includes('data-action="recommend-item"'),'지원·검진 일정 편집에서는 추천 버튼 삭제');
+hooks.openEditor(purchasing.id);
+assert(ui.modalBody.innerHTML.includes('data-action="recommend-item"'),'물품에서만 추천 버튼 제공');
+// UX 1.3.2: home profile + compact metrics, no duplicated completion bar.
+hooks.S.data.settings.babyName='검사 아이';
+hooks.S.data.settings.dueDate='2025-03-23';
+const profile=hooks.babyProfileSummary();
+assert.equal(profile.name,'검사 아이','가족 설정 이름을 홈에 반영');
+assert(profile.subtitle.includes('생후')&&profile.detail.includes('2025-03-23'),'출생일로부터 월령과 출생일 표시');
+const profileHome=hooks.renderHome();
+for(const name of ['준비 항목','완료','남은 준비','14일 내 확인','기록된 지출','추가 예상비']){
+ assert(profileHome.includes(name),'홈 요약 지표: '+name);
+}
+assert(profileHome.includes('검사 아이'),'홈에 저장한 아이 이름 노출');
+assert(!profileHome.includes('role="progressbar"'),'홈에 준비 완료율 막대를 다시 넣지 않음');
+const modalCss=fs.readFileSync(path.join(root,'style.css'),'utf8');
+assert(modalCss.includes('overscroll-behavior:contain')&&modalCss.includes('#modalBody{flex:1'),'모달 내부 스크롤만 허용');
+const originalBody=ctx.document.body;
+const fakeBody={style:{},classList:{add(){},remove(){}}};
+ctx.document.body=fakeBody;
+const previousModalClass=ui.modal.classList;
+ui.modal.classList={add(){},remove(){}};
+ctx.window.scrollY=130;
+let restoredY=-1;
+ctx.window.scrollTo=(x,y)=>{restoredY=y};
+hooks.modal('스크롤', '<div>스크롤 검사</div>');
+assert.equal(fakeBody.style.position,'fixed','편집창이 열린 동안 본문 페이지 스크롤 고정');
+assert.equal(fakeBody.style.top,'-130px','모달 열 때 본문 원래 스크롤 좌표 보존');
+hooks.closeModal();
+assert.equal(fakeBody.style.position,'','모달 닫으면 본문 스크롤 잠금 해제');
+assert.equal(restoredY,130,'모달 닫은 후 원래 위치 복원');
+ctx.document.body=originalBody;
+ui.modal.classList=previousModalClass;
+console.log('PASS: modal background locked, support tasks hide recommendations, saved baby profile and 6 home KPIs');
+
 const programs=ctx.window.BABY_PREP_BENEFITS;
 assert(Array.isArray(programs)&&programs.length>=25,'지원금 목록은 20개 이상');
 assert.equal(new Set(programs.map(x=>x.id)).size,programs.length,'혜택 ID 중복 불가');
