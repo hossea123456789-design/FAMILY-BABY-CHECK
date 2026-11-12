@@ -132,7 +132,7 @@ function generateEnrollmentCodes(){
  for(const pair of PAIR_CODES){
   const key='INVITE_HASH_'+pair.toUpperCase().replace(/-/g,'_');
   if(props.getProperty(key)){Logger.log(pair+': 이미 초대 코드 생성됨 (로그로 재표시 불가)');continue}
-  const code=(Utilities.getUuid()+Utilities.getUuid()).replace(/-/g,'');
+  const code=String(parseInt(Utilities.getUuid().replace(/-/g,'').slice(0,12),16)%100000000).padStart(8,'0');
   props.setProperty(key,sha256_(code));
   Logger.log(pair+' : '+code);
  }
