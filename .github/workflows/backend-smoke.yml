@@ -35,3 +35,9 @@ jobs:
             head -c 600 /tmp/bridge-guard.html || true
             exit 1
           fi
+      - name: Verify nonce-qualified Apps Script bridge
+        run: |
+          curl --location --fail --silent --show-error --max-time 30 "${BACKEND_URL}?bridge_nonce=AAAAAAAAAAAAAAAAAAAAAA%3D%3D" > /tmp/bridge.html
+          grep -Fq 'BABY_PREP_BRIDGE_READY' /tmp/bridge.html
+          grep -Fq 'https://hossea123456789-design.github.io' /tmp/bridge.html
+          echo "Bridge HTML and allowed origin returned successfully."
