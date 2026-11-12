@@ -179,16 +179,51 @@
  }
  async function encryptPayload(obj){const iv=rand(12),plain=enc.encode(JSON.stringify(obj));const cipher=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},S.key,plain));return JSON.stringify({v:1,iv:b64(iv),ct:b64(cipher)})}
  async function decryptPayload(text){const v=JSON.parse(text);if(v.v!==1)throw Error('지원하지 않는 암호 데이터 형식');const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(v.iv)},S.key,bytes(v.ct));return cleanData(JSON.parse(dec.decode(plain)))}
+ let miniProgressTimer=null;
+ let miniStarted=0;
+ function stopMiniProgress(){
+   if(miniProgressTimer!==null){clearInterval(miniProgressTimer);miniProgressTimer=null}
+ }
+ function setMiniValue(value,determinate){
+   const valueEl=byId('syncMiniValue'),fill=byId('syncMiniFill'),track=byId('syncMiniTrack');
+   if(!valueEl||!fill||!track)return;
+   valueEl.textContent=value;
+   if(determinate){
+     fill.style.width='100%';track.setAttribute('aria-valuenow','100');
+   }else{
+     fill.style.width=Math.min(92,Math.round(8+84*(1-Math.exp(-(Date.now()-miniStarted)/2300))))+'%';
+     track.removeAttribute('aria-valuenow');
+   }
+ }
  function labelStatus(message,mode=''){
    const el=byId('syncStatus');el.textContent=message;el.className='sync-status '+mode;
    const mini=byId('syncMini'),activity=byId('syncMiniActivity');
    if(!mini||!activity)return;
    const state=mode==='error'?'error':mode==='saved'?'done':mode==='loaded'?'loaded':mode==='cached'?'loading':
      /대기|미전송/.test(message)?'pending':/확인|불러|저장 중|기기 암호화|서버|동기화/.test(message)?'loading':'idle';
+   const previous=mini.dataset.state;
    mini.dataset.state=state;
-   activity.textContent=state==='done'?'✓ 저장 완료':state==='loaded'?'✓ 최신 확인':state==='error'?'연결 확인 필요':
-     state==='pending'?'저장 대기':state==='loading'?'동기화 중':'연결됨';
+   activity.textContent=state==='done'?'저장 완료':state==='loaded'?'불러오기 완료':
+     state==='error'?'연결 오류':state==='pending'?'저장 대기':
+     state==='loading'?(message.includes('저장')?'저장 중':'불러오는 중'):'연결됨';
    mini.setAttribute('aria-label',message);
+   mini.title='처리 중 진행률은 경과 시간 추정이며 서버 성공 응답 전 100%로 표시하지 않습니다.';
+   if(state==='loading'){
+     if(previous!=='loading'||miniProgressTimer===null){
+       stopMiniProgress();miniStarted=Date.now();
+       miniProgressTimer=setInterval(()=>{
+         const n=Math.min(92,Math.round(8+84*(1-Math.exp(-(Date.now()-miniStarted)/2300))));
+         setMiniValue(n+'%',false);
+       },180);
+     }
+     setMiniValue('8%',false);
+     return;
+   }
+   stopMiniProgress();
+   const valueEl=byId('syncMiniValue'),fill=byId('syncMiniFill'),track=byId('syncMiniTrack');
+   if(valueEl){valueEl.textContent=state==='done'?'✓':state==='loaded'?'100%':state==='pending'?'대기':state==='error'?'!':'—'}
+   if(fill)fill.style.width=(state==='done'||state==='loaded'||state==='error'?'100%':state==='pending'?'22%':'0%');
+   if(track){if(state==='done'||state==='loaded')track.setAttribute('aria-valuenow','100');else track.removeAttribute('aria-valuenow')}
  }
  function toast(message){const t=byId('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2500)}
  async function showAuth(){

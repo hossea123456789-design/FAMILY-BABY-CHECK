@@ -134,3 +134,17 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 /* Successful read ≠ successful save: separate blue loaded vs green saved. */
 .sync-mini[data-state="loaded"] .sync-mini-activity{color:#326db2}
 .sync-mini[data-state="loaded"] .sync-mini-track>span{background:#5495d6;transform:none}
+
+/* v1.3.1: YUHA-CARE-inspired unboxed mini progress — time estimate only until ACK */
+.sync-mini{width:103px;min-height:33px;align-items:stretch;gap:2px}
+.sync-mini-activity{font-size:10px;line-height:15px;text-align:center}
+.sync-mini-bottom{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-height:11px}
+.sync-mini-track{width:58px;height:4px;flex:0 0 58px}
+.sync-mini-track>span{height:100%;width:0%;transform:none!important;animation:none!important;position:static!important;left:auto!important;transition:width .15s ease}
+.sync-mini-value{width:33px;flex:0 0 33px;display:block;text-align:right;font-size:10px;font-weight:850;line-height:13px;color:#50729c;font-variant-numeric:tabular-nums}
+.sync-mini[data-state="done"] .sync-mini-value{color:#21876a;font-size:13px}
+.sync-mini[data-state="loaded"] .sync-mini-value{color:#326db2}
+.sync-mini[data-state="error"] .sync-mini-value{color:#b25652}
+.sync-mini[data-state="pending"] .sync-mini-value{color:#a27b37}
+.sync-mini[data-state="loading"] .sync-mini-track>span{background:#4d94dc}
+@media(max-width:355px){.sync-mini{width:91px}.sync-mini-track{width:48px;flex-basis:48px}.sync-mini-value{width:31px;flex-basis:31px}}
