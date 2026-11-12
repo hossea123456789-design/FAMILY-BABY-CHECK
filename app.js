@@ -33,7 +33,7 @@
    if(message)byId('authProgressText').textContent=message;
    byId('authScreen')?.classList.toggle('auth-loading',visible);
  }
- const S={family:'ew-he',setup:false,authToken:'',key:null,data:null,revision:0,route:'home',saving:false,generation:0,savedGeneration:0,conflict:null,filter:'all',sectionFilter:'all',benefitFilter:'relevant',search:'',initialized:false,retryCount:0,backend:!!CONFIG.backendUrl};
+ const S={family:'ew-he',setup:false,authToken:'',key:null,data:null,revision:0,route:'home',saving:false,generation:0,savedGeneration:0,conflict:null,filter:'all',sectionFilter:'all',benefitFilter:'relevant',search:'',previousRoute:'home',initialized:false,retryCount:0,backend:!!CONFIG.backendUrl};
  let activePin='passwordInput';
  function paintPins(){
    [['passwordInput','pinPrimaryDisplay'],['passwordAgainInput','pinConfirmDisplay']].forEach(([inputId,displayId])=>{
@@ -179,20 +179,57 @@
  }
  async function encryptPayload(obj){const iv=rand(12),plain=enc.encode(JSON.stringify(obj));const cipher=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},S.key,plain));return JSON.stringify({v:1,iv:b64(iv),ct:b64(cipher)})}
  async function decryptPayload(text){const v=JSON.parse(text);if(v.v!==1)throw Error('지원하지 않는 암호 데이터 형식');const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(v.iv)},S.key,bytes(v.ct));return cleanData(JSON.parse(dec.decode(plain)))}
- function labelStatus(message,mode=''){const el=byId('syncStatus');el.textContent=message;el.className='sync-status '+mode}
+ function labelStatus(message,mode=''){
+   const el=byId('syncStatus');el.textContent=message;el.className='sync-status '+mode;
+   const mini=byId('syncMini'),activity=byId('syncMiniActivity');
+   if(!mini||!activity)return;
+   const state=mode==='error'?'error':mode==='saved'?'done':mode==='cached'?'loading':
+     /대기|미전송/.test(message)?'pending':/확인|불러|저장 중|기기 암호화|서버|동기화/.test(message)?'loading':'idle';
+   mini.dataset.state=state;
+   activity.textContent=state==='done'?'✓ 저장 완료':state==='error'?'연결 확인 필요':
+     state==='pending'?'저장 대기':state==='loading'?'동기화 중':'연결됨';
+   mini.setAttribute('aria-label',message);
+ }
  function toast(message){const t=byId('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2500)}
  async function showAuth(){
-   S.key=null;S.authToken='';S.data=null;S.revision=0;S.generation=0;S.savedGeneration=0;S.retryCount=0;S.conflict=null;S.route='home';
+   S.key=null;S.authToken='';S.data=null;S.revision=0;S.generation=0;S.savedGeneration=0;S.retryCount=0;S.conflict=null;S.route='home';S.previousRoute='home';
    byId('authScreen').classList.remove('hidden');byId('mainScreen').classList.add('hidden');resetPins(true);byId('authMessage').textContent='';
    await refreshMeta();
  }
  let metaRequestSeq=0;
+ function applyMeta(initialized,salt,fromCache=false){
+   S.setup=!initialized;
+   S.authSalt=salt;
+   byId('inviteWrap').classList.toggle('hidden',!S.setup);
+   byId('passwordAgainWrap').classList.toggle('hidden',!S.setup);
+   byId('pinLabel').textContent=S.setup?'새 4자리 PIN 설정':'4자리 PIN 입력';
+   byId('authSubmit').textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';
+   byId('authMode').textContent=S.setup?'처음 입장입니다. 초대 코드를 입력해 PIN을 설정하세요.':
+     fromCache?'이 기기에 암호화 기록이 있습니다. PIN 입력 시 바로 열립니다.':'등록된 가족 공간입니다. PIN을 입력하세요.';
+   paintPins();
+ }
  async function refreshMeta(){
-   const seq=++metaRequestSeq,selectedFamily=S.family;
-   const mode=byId('authMode');mode.textContent='가족 공간 확인 중…';byId('authSubmit').disabled=true;authProgress(true,'등록 상태를 확인하고 있습니다…');resetPins(true);
-   try{const r=await Bridge.call({action:'meta',family:selectedFamily});if(seq!==metaRequestSeq)return;S.setup=!r.initialized;S.authSalt=r.salt;byId('inviteWrap').classList.toggle('hidden',!S.setup);byId('passwordAgainWrap').classList.toggle('hidden',!S.setup);byId('pinLabel').textContent=S.setup?'새 4자리 PIN 설정':'4자리 PIN 입력';byId('authSubmit').textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';mode.textContent=S.setup?'처음 입장합니다. 초대 코드를 입력하고 숫자 PIN을 두 번 설정하세요.':'등록된 가족 공간입니다. 숫자 PIN을 입력하세요.';paintPins();}
-   catch(e){if(seq!==metaRequestSeq)return;mode.textContent='연결 오류: '+e.message;byId('authMessage').textContent='연결 상태를 확인한 뒤 다시 시도하세요.'}
-   finally{if(seq===metaRequestSeq){byId('authSubmit').disabled=false;authProgress(false)}}
+   const seq=++metaRequestSeq,selectedFamily=S.family,cache=storageGet(cacheKey(selectedFamily));
+   byId('authMessage').textContent='';resetPins(true);
+   if(cache?.salt&&cache.cipher&&Number(cache.revision)>0){
+     // 같은 기기는 salt와 암호문을 보유하므로 메타 요청 완료까지 PIN을 잠그지 않습니다.
+     applyMeta(true,cache.salt,true);
+     byId('authSubmit').disabled=false;authProgress(false);
+     return;
+   }
+   byId('authMode').textContent='가족 공간 확인 중…';
+   byId('authSubmit').disabled=true;authProgress(true,'가족 공간을 확인하는 중…');
+   try{
+     const r=await Bridge.call({action:'meta',family:selectedFamily});
+     if(seq!==metaRequestSeq)return;
+     applyMeta(!!r.initialized,r.salt||'',false);
+   }catch(e){
+     if(seq!==metaRequestSeq)return;
+     byId('authMode').textContent='연결 오류: '+e.message;
+     byId('authMessage').textContent='네트워크 연결 상태를 확인해 주세요.';
+   }finally{
+     if(seq===metaRequestSeq){byId('authSubmit').disabled=false;authProgress(false)}
+   }
  }
  async function submitAuth(e){
   e.preventDefault();const pass=byId('passwordInput').value,msg=byId('authMessage'),btn=byId('authSubmit');msg.textContent='';btn.disabled=true;btn.textContent='열고 있습니다…';authProgress(true,'암호화된 가족 기록을 여는 중…');await allowPaint();
@@ -205,25 +242,44 @@
      const cipher=await encryptPayload(S.data);
      authProgress(true,'가족 공간을 서버에 등록하고 있습니다…');const r=await Bridge.call({action:'setup',family:S.family,inviteCode:byId('inviteInput').value.trim(),salt,verifier:derived.verifier,cipher});
      if(!r.ok)throw Error(r.error||'최초 등록 실패');S.revision=r.revision||1;S.authSalt=salt;S.generation=0;S.savedGeneration=0;
-     storageSet(cacheKey(),{cipher,revision:S.revision,pending:false});toast('가족 공간이 준비되었습니다.');
+     storageSet(cacheKey(),{cipher,revision:S.revision,salt:S.authSalt,pending:false});toast('가족 공간이 준비되었습니다.');
    } else {
      const derived=await derive(pass,S.authSalt);S.key=derived.key;S.authToken=derived.authToken;
-     authProgress(true,'서버에서 암호화 기록을 불러오는 중…');const r=await Bridge.call({action:'login',family:S.family,authToken:derived.authToken});
-     if(!r.ok)throw Error(r.error||'로그인 실패');
-     S.revision=r.revision;S.data=await decryptPayload(r.cipher);
      const cache=storageGet(cacheKey());
-     if(cache?.pending&&cache.cipher){
-       try{const local=await decryptPayload(cache.cipher);
-         if(confirm('이 기기에 서버로 전송되지 않은 암호화 기록이 있습니다. 해당 기록을 먼저 불러오시겠습니까?\n취소를 누르면 서버 기록으로 시작하며 미전송 기록은 그대로 보관됩니다.')){
-           S.data=local;S.generation++;S.savedGeneration=0;S.revision=cache.revision??S.revision;
-         }
-       }catch(err){console.warn('로컬 미전송 복원 실패',err)}
+     // PIN으로 암호화된 로컬 기록을 먼저 복호화하면, 서버 왕복 전에 화면을 열 수 있습니다.
+     // pending 기록은 무조건 서버 동기화·충돌 검사 후 사용하여 미전송 변경을 보호합니다.
+     let openedCache=false;
+     if(cache?.cipher&&!cache.pending&&cache.salt===S.authSalt&&Number(cache.revision)>0){
+       try{
+         S.data=await decryptPayload(cache.cipher);
+         S.revision=cache.revision;
+         openedCache=true;
+       }catch{
+         // 로컬 캐시가 깨졌다면 서버 원본으로 검증하여 복구합니다.
+         S.data=null;
+       }
      }
-     if(!cache?.pending)storageSet(cacheKey(),{cipher:r.cipher,revision:S.revision,pending:false});
+     if(!openedCache){
+       authProgress(true,'서버에서 암호화 기록을 불러오는 중…');
+       const r=await Bridge.call({action:'login',family:S.family,authToken:derived.authToken});
+       if(!r.ok)throw Error(r.error||'로그인 실패');
+       S.revision=r.revision;S.data=await decryptPayload(r.cipher);
+       if(cache?.pending&&cache.cipher){
+         try{const local=await decryptPayload(cache.cipher);
+           if(confirm('이 기기에 아직 전송되지 않은 기록이 있습니다. 서버 기록 대신 이 기기 기록으로 복원하시겠습니까?\n취소하면 서버 기록을 사용하고 미전송 기록은 별도로 보관합니다.')){
+             S.data=local;S.generation++;S.savedGeneration=0;S.revision=cache.revision??S.revision;
+           }
+         }catch(err){console.warn('로컬 미전송 복원 실패',err)}
+       }
+       if(!cache?.pending)storageSet(cacheKey(),{cipher:r.cipher,revision:S.revision,salt:S.authSalt,pending:false});
+     }
+     S.openedFromCache=openedCache;
    }
    byId('authScreen').classList.add('hidden');byId('mainScreen').classList.remove('hidden');byId('familyTitle').textContent=FAMILY[S.family];
-   labelStatus(S.backend?'🔐 암호화 동기화 연결됨':'⚠ 이 기기에만 암호화 저장',S.backend?'saved':'error');render();
+   labelStatus(S.openedFromCache&&S.backend?'기기 기록을 열었습니다 · 서버 확인 중':S.backend?'✓ 서버 기록 확인 완료':'✓ 이 기기 기록 확인',S.openedFromCache&&S.backend?'cached':'saved');render();
    if(S.generation>S.savedGeneration)queueSave();
+   if(S.openedFromCache&&S.backend)void refreshFromServer(true);
+   S.openedFromCache=false;
   }catch(err){S.key=null;S.authToken='';S.data=null;resetPins();msg.textContent=err.message||'잠금 해제 실패';}
   finally{btn.disabled=false;btn.textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';authProgress(false)}
  }
@@ -236,21 +292,36 @@
    S.saving=true;const gen=S.generation;labelStatus('● 기기 암호화 및 저장 중');
    try{
      const cipher=await encryptPayload(S.data);
-     storageSet(cacheKey(),{cipher,revision:S.revision,pending:true});
+     storageSet(cacheKey(),{cipher,revision:S.revision,salt:S.authSalt,pending:true});
      const r=await Bridge.call({action:'save',family:S.family,authToken:S.authToken,revision:S.revision,cipher});
      if(r.error==='CONFLICT'||r.ok===false){S.conflict={serverRevision:r.revision,cipher};labelStatus('⚠ 다른 기기의 수정과 충돌','error');showConflict();return}
      S.revision=r.revision;S.savedGeneration=gen;S.retryCount=0;
-     if(S.generation===gen){storageSet(cacheKey(),{cipher,revision:S.revision,pending:false});labelStatus(S.backend?'✓ 암호화된 서버 저장 완료':'✓ 이 기기 저장 완료','saved')}
+     if(S.generation===gen){storageSet(cacheKey(),{cipher,revision:S.revision,salt:S.authSalt,pending:false});labelStatus(S.backend?'✓ 암호화된 서버 저장 완료':'✓ 이 기기 저장 완료','saved')}
      else labelStatus('● 추가 변경 사항 저장 대기');
    }catch(e){S.retryCount++;labelStatus('⚠ 서버 전송 실패 · 이 기기 암호화 보관','error');toast(e.message)}
    finally{S.saving=false;if(!S.conflict&&S.generation>S.savedGeneration&&S.retryCount<=5)queueSave(S.retryCount?Math.min(60000,1200*Math.pow(2,S.retryCount)):900)}
  }
- async function refreshFromServer(){
+ async function refreshFromServer(quiet=false){
    if(!S.data)return;
-   if(S.generation>S.savedGeneration||S.saving){toast('미저장 변경을 먼저 동기화합니다.');queueSave();return}
-   try{labelStatus('↻ 서버 확인 중');const r=await Bridge.call({action:'login',family:S.family,authToken:S.authToken});if(!r.ok)throw Error(r.error);
-    if(r.revision>S.revision){S.data=await decryptPayload(r.cipher);S.revision=r.revision;storageSet(cacheKey(),{cipher:r.cipher,revision:r.revision,pending:false});render();toast('다른 기기에서 수정한 내역을 반영했습니다.')}else toast('최신 상태입니다.');labelStatus('✓ 암호화 동기화 완료','saved');
-   }catch(e){labelStatus('⚠ 동기화 실패','error');toast(e.message)}
+   if(S.generation>S.savedGeneration||S.saving){if(!quiet)toast('미저장 변경을 먼저 동기화합니다.');queueSave();return}
+   const startedGeneration=S.generation;
+   try{
+     labelStatus('↻ 서버 최신 기록 확인 중');
+     const r=await Bridge.call({action:'login',family:S.family,authToken:S.authToken});
+     if(!r.ok)throw Error(r.error||'서버 인증 실패');
+     // 요청하는 동안 사용자가 체크를 변경했다면 서버 데이터로 덮어쓰지 않습니다.
+     if(S.generation!==startedGeneration||S.saving){labelStatus('● 변경 사항 저장 대기');return}
+     if(r.revision>S.revision){
+       S.data=await decryptPayload(r.cipher);
+       if(S.generation!==startedGeneration||S.saving){labelStatus('● 변경 사항 저장 대기');return}
+       S.revision=r.revision;storageSet(cacheKey(),{cipher:r.cipher,revision:r.revision,salt:S.authSalt,pending:false});
+       render();if(!quiet)toast('다른 기기에서 수정한 내역을 반영했습니다.');
+     }else if(!quiet)toast('최신 상태입니다.');
+     labelStatus('✓ 서버 최신 기록 확인 완료','saved');
+   }catch(e){
+     labelStatus('⚠ 서버 확인 실패 · 이 기기 암호화 기록 유지','error');
+     if(!quiet)toast(e.message);
+   }
  }
  function modal(title,html){byId('modalTitle').textContent=title;byId('modalBody').innerHTML=html;byId('modal').classList.remove('hidden')}
  function closeModal(){byId('modal').classList.add('hidden');byId('modalBody').innerHTML=''}
@@ -263,7 +334,7 @@
      if(choice==='remote'){
        if(!confirm('이 기기의 미전송 기록을 포기하고 서버 기록으로 전환하시겠습니까?'))return;
        S.data=await decryptPayload(r.cipher);S.revision=r.revision;S.savedGeneration=S.generation;S.conflict=null;
-       storageSet(cacheKey(),{cipher:r.cipher,revision:r.revision,pending:false});closeModal();render();labelStatus('✓ 최신 서버 기록 적용','saved');
+       storageSet(cacheKey(),{cipher:r.cipher,revision:r.revision,salt:S.authSalt,pending:false});closeModal();render();labelStatus('✓ 최신 서버 기록 적용','saved');
      } else {
        if(!confirm('서버의 최신 변경을 현재 기기의 기록으로 교체합니다. 계속하시겠습니까?'))return;
        S.revision=r.revision;S.conflict=null;closeModal();S.generation++;queueSave();
@@ -283,7 +354,7 @@
    const items=activeItems(),done=items.filter(doneNow).length,pct=items.length?Math.round(done*100/items.length):0;
    return `<div class="check-progress"><div class="check-progress-line"><strong>준비 현황</strong><span>${done} / ${items.length}개 · ${pct}%</span></div><div class="check-progress-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="체크리스트 완료율"><span style="width:${pct}%"></span></div></div>`;
  }
- function render(){if(!S.data)return;renderTabs();const route=S.route;let html='';if(route==='home')html=renderHome();else if(route==='all'||route.startsWith('section:'))html=renderList(route);else if(route==='timeline')html=renderTimeline();else if(route==='budget')html=renderBudget();else if(route==='reco')html=renderReco();else if(route==='settings')html=renderSettings();else if(route==='benefits')html=renderBenefits();byId('mainContent').innerHTML=`<div class="screen">${html}</div>`;}
+ function render(){if(!S.data)return;renderTabs();byId('settingsBtn').textContent=S.route==='settings'?'←':'⚙';byId('settingsBtn').setAttribute('aria-label',S.route==='settings'?'이전 화면으로':'가족 설정 열기');const route=S.route;let html='';if(route==='home')html=renderHome();else if(route==='all'||route.startsWith('section:'))html=renderList(route);else if(route==='timeline')html=renderTimeline();else if(route==='budget')html=renderBudget();else if(route==='reco')html=renderReco();else if(route==='settings')html=renderSettings();else if(route==='benefits')html=renderBenefits();byId('mainContent').innerHTML=`<div class="screen">${html}</div>`;}
  function renderTabs(){
    const tabs=[['home','홈'],['all','체크'],['timeline','일정'],['benefits','혜택']];
    const active=S.route==='budget'?'home':S.route.startsWith('section:')?'all':S.route;
@@ -477,7 +548,7 @@
  function exportCSV(){const lines=[['구분','품목','상태','구비방법','제품','제공자','수량','예상가격','실제지출','마감일','담당','반복'].map(csv).join(',')];activeItems().forEach(i=>lines.push([i.section,i.title,i.status,acquisitionText(i.acquisition),i.product,i.giver,i.quantity,i.estimate,i.actual,dueOf(i),i.owner,repeatLabel(i)].map(csv).join(',')));download('baby-prep-budget-'+today()+'.csv',new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}))}
  function exportICS(){const active=activeItems().filter(i=>i.type==='task'&&dueOf(i)&&i.status!=='skipped');if(!active.length)return toast('날짜가 있는 일정이 없습니다. 먼저 기준일을 입력하세요.');const escICS=s=>String(s||'').replaceAll('\\','\\\\').replaceAll(';','\\;').replaceAll(',','\\,').replaceAll('\n','\\n');const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Baby Prep//KR//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];for(const i of active){const d=dueOf(i).replaceAll('-',''),next=isoDate(addDays(dateValue(dueOf(i)),1)).replaceAll('-','');lines.push('BEGIN:VEVENT','UID:'+i.id+'@baby-prep.local','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'Z'),'DTSTART;VALUE=DATE:'+d,'DTEND;VALUE=DATE:'+next,'SUMMARY:'+escICS(i.title),'DESCRIPTION:'+escICS(i.notes||i.section),'BEGIN:VALARM','TRIGGER:-P7D','ACTION:DISPLAY','DESCRIPTION:일정 7일 전','END:VALARM','BEGIN:VALARM','TRIGGER:-P1D','ACTION:DISPLAY','DESCRIPTION:일정 하루 전','END:VALARM','END:VEVENT')}lines.push('END:VCALENDAR');download('baby-prep-calendar.ics',new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'}))}
  async function clickAction(e){const el=e.target.closest('[data-action]');if(!el)return;const action=el.dataset.action,id=el.dataset.id,section=el.dataset.section;try{switch(action){
-  case 'route':S.route=el.dataset.route;S.search='';S.filter='all';render();break;
+  case 'route':if(el.dataset.route==='settings'&&S.route!=='settings')S.previousRoute=S.route;S.route=el.dataset.route;S.search='';S.filter='all';render();break;
   case 'benefit-filter':S.benefitFilter=el.dataset.filter==='all'?'all':'relevant';render();break;
   case 'add':openEditor(null,section,el.dataset.kind);break;
   case 'quick-add':S.route='all';S.sectionFilter=S.data.sections.includes(section)?section:'all';S.filter='all';S.search='';render();byId('quickTitle')?.focus();break;
@@ -528,6 +599,11 @@
      if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='sectionFilter'){S.sectionFilter=e.target.value;S.route='all';render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
    byId('modalClose').addEventListener('click',closeModal);byId('modal').addEventListener('click',e=>{if(e.target===byId('modal')&&!S.conflict)closeModal()});
    byId('lockBtn').addEventListener('click',()=>clickAction({target:{closest:()=>({dataset:{action:'lock'}})}}));
+   byId('settingsBtn').addEventListener('click',()=>{
+     if(S.route==='settings')S.route=S.previousRoute&&S.previousRoute!=='settings'?S.previousRoute:'home';
+     else {S.previousRoute=S.route;S.route='settings';}
+     render();
+   });
    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.data&&S.generation===S.savedGeneration&&S.backend&&!S.conflict)refreshFromServer()});
    window.addEventListener('beforeunload',e=>{if(S.data&&S.generation>S.savedGeneration){e.preventDefault();e.returnValue=''}});
  }

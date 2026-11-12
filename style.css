@@ -112,3 +112,21 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 .check-progress-meter span{display:block;height:100%;background:#4480e4;border-radius:7px;transition:width .2s ease}
 .settings-advanced{background:#f9fbff;border:1px solid #e4eaf2;border-radius:13px;padding:12px;margin:15px 0}
 .settings-advanced summary{cursor:pointer;font-size:13px;font-weight:800;color:#425775}.settings-advanced[open] summary{border-bottom:1px solid var(--line);padding-bottom:10px}
+
+/* 1.3.0 reference: YUHA-CARE verified mini synchronization indicator, not task completion */
+.sync-mini{width:87px;min-height:30px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:5px;overflow:hidden}
+.sync-mini-activity{font-size:10px;font-weight:800;color:#698096;white-space:nowrap}
+.sync-mini-track{height:3px;width:67px;background:#e5ebf4;border-radius:5px;overflow:hidden;display:block;position:relative}
+.sync-mini-track>span{width:100%;height:100%;display:block;background:#75b0ee;transform:scaleX(.5);transform-origin:left}
+.sync-mini[data-state="loading"] .sync-mini-activity{color:#3c70b5}
+.sync-mini[data-state="loading"] .sync-mini-track>span{width:45%;transform:none;position:absolute;animation:mini-sync-moving 1.15s ease-in-out infinite}
+.sync-mini[data-state="pending"] .sync-mini-activity{color:#a27b37}
+.sync-mini[data-state="pending"] .sync-mini-track>span{background:#d4ae66;transform:scaleX(.24)}
+.sync-mini[data-state="done"] .sync-mini-activity{color:#21876a}
+.sync-mini[data-state="done"] .sync-mini-track>span{background:#3d9b76;transform:none}
+.sync-mini[data-state="error"] .sync-mini-activity{color:#b25652}
+.sync-mini[data-state="error"] .sync-mini-track>span{background:#c66d65;transform:none}
+.sync-mini[data-state="idle"] .sync-mini-track>span{background:#bcc9d9;transform:none}
+@keyframes mini-sync-moving{from{left:-50%}to{left:120%}}
+@media(prefers-reduced-motion:reduce){.sync-mini[data-state="loading"] .sync-mini-track>span{animation:none;width:100%;left:0}}
+@media(max-width:345px){.sync-mini{width:70px}.header-controls{gap:5px}.header-top h1{font-size:16px}.header-lock{min-width:34px}}
