@@ -17,7 +17,7 @@ vm.createContext(ctx);
 for(const f of ['seed.js','toddler-seed.js','benefits.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
 const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
 assert(source.includes(' init();\n})();'),'앱 시작 진입점을 찾지 못했습니다. 테스트 스크립트를 확인하세요.');
-vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderNav,renderHeaderProgress,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits};\n})();'),ctx);
+vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderNav,renderHeaderProgress,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus};\n})();'),ctx);
 const newborn=vm.runInContext('babyPrepInitialData()',ctx);
 const roadmap=vm.runInContext('babyPrepToddlerData()',ctx);
 const hooks=ctx.__testHooks;
@@ -139,6 +139,18 @@ assert.equal(hooks.S.data.benefits[monthly.id].monthly[pastMonthKey],'done','과
 hooks.S.data.settings.residenceRegion='other';
 assert(!hooks.benefitStats().relevant.some(x=>x.id==='seoul-grandparent'),'지역 변경 시 노출만 바뀜');
 assert.equal(hooks.benefitState('seoul-grandparent'),'review','지역 변경이 과거 완료 기록을 삭제하지 않음');
+
+const firstCard=hooks.benefitCard(g,givenSeoul);
+assert(firstCard.includes('내 진행 상태')&&firstCard.includes('benefit-status-select'),'상태는 단일 선택 입력으로 표시');
+assert(firstCard.includes('value="pending" selected'),'신규 혜택은 미확인이 선택된 상태');
+assert(firstCard.includes('공식 안내 열기 ↗'),'실제 신청 안내 링크를 별도 표시');
+assert(!firstCard.includes('data-action="benefit-status"'),'완료를 기본 강조하는 액션 버튼 제거');
+assert(hooks.saveBenefitStatus('seoul-grandparent','review'),'진행 상태 변경 성공');
+assert.equal(hooks.benefitState('seoul-grandparent'),'review','선택한 진행 상태가 가족 데이터에 즉시 반영');
+assert(hooks.saveBenefitStatus('seoul-grandparent','pending'),'미확인으로 되돌리는 동작');
+assert.equal(hooks.benefitState('seoul-grandparent'),'pending');
+assert.equal(hooks.saveBenefitStatus('seoul-grandparent','impossible'),false,'잘못된 상태값 차단');
+
 const view=hooks.renderBenefits();
 assert(view.includes('가족 혜택')&&view.includes('공식 안내'),'혜택 화면 및 공식 출처 표시');
 console.log('PASS: 25 benefits, national + Seoul + Gyeonggi, age/stage/area gates, month-start deadline, safe legacy migration');

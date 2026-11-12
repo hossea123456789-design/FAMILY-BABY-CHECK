@@ -71,3 +71,13 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 .settings-region{display:flex;flex-direction:column;gap:9px;background:#f6f9ff;border:1px solid #e3ecf9;border-radius:13px;padding:12px}
 .settings-region .tiny-note{margin:0}
 @media(max-width:360px){.benefit-actions button{padding:8px 7px}.benefit-card{padding:12px}}
+
+/* v1.2.3: family benefit status is one neutral selector, not a completion CTA */
+.benefit-usage-note{font-size:12px;line-height:1.6;margin:12px 0;color:#52627b;background:#f4f7fc;border-radius:11px;padding:10px 12px}
+.benefit-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;margin-top:13px}
+.benefit-status-label{display:flex;flex-direction:column;gap:6px;min-width:0}
+.benefit-status-label>span{font-size:11px;font-weight:760;color:#53627a}
+.benefit-status-select{appearance:auto;min-width:0;width:100%;min-height:44px;padding:9px 10px;border:1px solid #d4dbe7;border-radius:11px;background:#fff;color:#26354c;font-size:13px;cursor:pointer}
+.benefit-status-select:focus-visible{outline:3px solid #9cbcff;outline-offset:2px}
+.benefit-info-link{display:flex;align-items:center;justify-content:center;min-height:44px;padding:7px 9px;border:1px solid #dce5f4;border-radius:11px;background:#f8fbff;color:#2754a2;font-size:12px;font-weight:760;text-decoration:none;white-space:nowrap}
+@media(max-width:375px){.benefit-controls{grid-template-columns:1fr}.benefit-info-link{justify-content:flex-start}}

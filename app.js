@@ -228,7 +228,7 @@
   finally{btn.disabled=false;btn.textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';authProgress(false)}
  }
  let saveTimer=null;
- function markDirty(){S.retryCount=0;S.generation++;labelStatus('● 변경 사항 저장 대기','');queueSave();render()}
+ function markDirty(shouldRender=true){S.retryCount=0;S.generation++;labelStatus('● 변경 사항 저장 대기','');queueSave();if(shouldRender)render()}
  function queueSave(delay=900){clearTimeout(saveTimer);saveTimer=setTimeout(persist,delay)}
  async function persist(){
    if(!S.key||!S.data||S.saving||S.conflict)return;
@@ -327,21 +327,47 @@
  }
  function benefitStats(){
    const ctx=benefitContext(),relevant=benefitEntries().filter(e=>benefitVisible(e,ctx));
-   return {ctx,relevant,pending:relevant.filter(e=>benefitState(e.id)==='pending'),done:relevant.filter(e=>benefitState(e.id)==='done').length};
+   return {ctx,relevant,pending:relevant.filter(e=>benefitState(e.id)==='pending'),reviewing:relevant.filter(e=>benefitState(e.id)==='review'),done:relevant.filter(e=>benefitState(e.id)==='done').length};
+ }
+ function saveBenefitStatus(code,next){
+   const entry=benefitEntries().find(x=>x.id===code);
+   if(!entry||!['done','review','na','pending'].includes(next))return false;
+   if(!S.data.benefits)S.data.benefits={};
+   const prev=S.data.benefits[code]||{};
+   if(entry.monthly){
+     const month=today().slice(0,7);
+     S.data.benefits[code]={...prev,status:next==='na'?'na':'pending',
+       monthly:{...(prev.monthly||{}),[month]:next},updatedAt:stamp()};
+   } else S.data.benefits[code]={status:next,updatedAt:stamp()};
+   return true;
+ }
+ function updateBenefitSummary(){
+   const done=byId('benefitDone'),pending=byId('benefitPending');
+   if(!done||!pending)return;
+   const stats=benefitStats();
+   done.textContent=stats.done+'개 완료';
+   pending.textContent=stats.pending.length+'개 미확인 · '+stats.reviewing.length+'개 확인 중';
  }
  function benefitCard(e,ctx){
-   const state=benefitState(e.id),due=benefitDue(e,ctx),source=safeUrl(e.source),
-     statusLabel=state==='done'?'처리 완료':state==='review'?'확인·신청 중':state==='na'?'해당 없음':'미확인';
-   return `<article class="benefit-card">
-     <div class="inline"><span class="chip">${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · ${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}${e.monthly?' · 매월':''}</span><span class="muted-small">${statusLabel}</span></div>
+   const state=benefitState(e.id),due=benefitDue(e,ctx),source=safeUrl(e.source);
+   const statusOptions=[
+     ['pending','미확인'],
+     ['review','조건·신청 확인 중'],
+     ['done','신청·처리 완료'],
+     ['na','해당 없음']
+   ];
+   return `<article class="benefit-card" data-benefit-card="${escape(e.id)}">
+     <div class="inline"><span class="chip">${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · ${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}${e.monthly?' · 매월':''}</span></div>
      <h3>${escape(e.title)}</h3>
      <p>${escape(e.desc)}</p>
      ${due?`<p class="benefit-due">📅 ${escape(due)} 무렵 확인 ${!ctx.birthDate&&e.stage!=='pregnancy'?'(출산예정일 기준 예상)':''}</p>`:''}
-     <div class="benefit-actions">
-       <button type="button" class="${state==='done'?'secondary':'primary'}" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='done'?'pending':'done'}">${state==='done'?'완료 취소':'✓ 신청·처리 완료'}</button>
-       <button type="button" class="mini-btn" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='review'?'pending':'review'}">${state==='review'?'미확인':'확인 중'}</button>
-       <button type="button" class="mini-btn" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='na'?'pending':'na'}">${state==='na'?'대상 확인 전으로':'해당 없음'}</button>
-       ${source?`<a href="${escape(source)}" rel="noopener noreferrer" target="_blank">공식 안내</a>`:''}
+     <div class="benefit-controls">
+       <label class="benefit-status-label"><span>내 진행 상태</span>
+         <select class="benefit-status-select" data-benefit="${escape(e.id)}" aria-label="${escape(e.title)} 진행 상태">
+           ${statusOptions.map(([value,label])=>`<option value="${value}" ${state===value?'selected':''}>${label}</option>`).join('')}
+         </select>
+       </label>
+       ${source?`<a class="benefit-info-link" href="${escape(source)}" rel="noopener noreferrer" target="_blank" aria-label="${escape(e.title)} 공식 신청 안내 보기">공식 안내 열기 ↗</a>`:''}
      </div>
    </article>`;
  }
@@ -355,10 +381,11 @@
    return `<div class="inline"><h2 class="section-title">🎁 우리 가족 혜택</h2><button class="link-button" data-action="route" data-route="home">홈으로</button></div>
      <p class="muted-small">2026년 공식 안내 기준 · 현재 단계와 ${escape(regionName)} 혜택 · 세 가족 데이터는 각각 저장됩니다.</p>
      ${areaWarning}
-     <div class="card benefit-summary"><div><strong>${stats.done}개 확인 완료</strong><span>${stats.pending.length}개 확인할 혜택</span></div><button class="mini-btn" data-action="route" data-route="settings">가족·거주지 설정</button></div>
+     <div class="card benefit-summary"><div><strong id="benefitDone">${stats.done}개 완료</strong><span id="benefitPending">${stats.pending.length}개 미확인 · ${stats.reviewing.length}개 확인 중</span></div><button class="mini-btn" data-action="route" data-route="settings">가족·거주지 설정</button></div>
      <div class="benefit-filter"><button class="pill ${!all?'active':''}" data-action="benefit-filter" data-filter="relevant">현재 단계</button><button class="pill ${all?'active':''}" data-action="benefit-filter" data-filter="all">전체 단계·과거 내역</button></div>
+     <p class="benefit-usage-note">‘내 진행 상태’를 바꾸면 이 앱에 자동 저장됩니다. 실제 신청·조건 확인은 각 카드의 ‘공식 안내 열기’를 이용하세요.</p>
      <div class="benefits-list">${results.map(e=>benefitCard(e,ctx)).join('')||'<div class="empty">현재 조건에 맞는 혜택이 없습니다.</div>'}</div>
-     <p class="tiny-note">‘신청·처리 완료’는 실제 신청 또는 자격·처리 결과를 확인한 경우에만 선택하세요. 각 항목은 수급 확정이 아닌 신청·자격 확인용입니다. 가족별 주소·소득·맞벌이/양육공백·아동 연령에 따라 달라질 수 있습니다. 연도가 바뀌면 금액·기한·신청 접수를 다시 확인해야 합니다.</p>`;
+     <p class="tiny-note">‘신청·처리 완료’는 실제로 신청하거나 해당 혜택의 처리가 완료됐을 때만 선택하세요. 이 화면에서의 상태 변경은 실제 정부 지원금 신청이 아닙니다. 각 항목은 수급 확정이 아닌 신청·자격 확인용입니다. 가족별 주소·소득·맞벌이/양육공백·아동 연령에 따라 달라질 수 있습니다. 연도가 바뀌면 금액·기한·신청 접수를 다시 확인해야 합니다.</p>`;
  }
  function benefitHomePanel(){
    const stats=benefitStats(),near=stats.pending.slice().sort((a,b)=>a.month-b.month).slice(0,3);
@@ -447,18 +474,6 @@
  async function clickAction(e){const el=e.target.closest('[data-action]');if(!el)return;const action=el.dataset.action,id=el.dataset.id,section=el.dataset.section;try{switch(action){
   case 'route':S.route=el.dataset.route;S.search='';S.filter='all';render();break;
   case 'benefit-filter':S.benefitFilter=el.dataset.filter==='all'?'all':'relevant';render();break;
-  case 'benefit-status':{
-    const code=el.dataset.benefit,next=el.dataset.status;
-    if(!benefitEntries().some(b=>b.id===code)||!['done','review','na','pending'].includes(next))return;
-    if(!S.data.benefits)S.data.benefits={};
-    const entry=benefitEntries().find(b=>b.id===code),prev=S.data.benefits[code]||{};
-    if(entry.monthly){
-      const month=today().slice(0,7);
-      S.data.benefits[code]={...prev,status:next==='na'?'na':'pending',
-        monthly:{...(prev.monthly||{}),[month]:next},updatedAt:stamp()};
-    } else S.data.benefits[code]={status:next,updatedAt:stamp()};
-    markDirty();toast(entry.monthly?'이번 달 확인 상태를 기록했습니다.':'혜택 확인 상태를 기록했습니다.');break;
-  }
   case 'add':openEditor(null,section,el.dataset.kind);break;
   case 'quick-add':S.route='all';S.sectionFilter=S.data.sections.includes(section)?section:'all';S.filter='all';S.search='';render();byId('quickTitle')?.focus();break;
   case 'edit':openEditor(id);break;
@@ -495,7 +510,17 @@
   });
   document.addEventListener('click',clickAction);document.addEventListener('submit',submitAction);byId('familyGrid').addEventListener('click',e=>{const b=e.target.closest('[data-family]');if(!b)return;selectFamily(b.dataset.family,true);refreshMeta()});byId('listSearch')?.addEventListener('input',()=>{});
    document.addEventListener('input',e=>{if(e.target.id==='listSearch'){S.search=e.target.value;const focus=e.target.selectionStart;render();const el=byId('listSearch');el?.focus();el?.setSelectionRange(focus,focus)}});
-   document.addEventListener('change',e=>{if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='sectionFilter'){S.sectionFilter=e.target.value;S.route='all';render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
+   document.addEventListener('change',e=>{
+     if(e.target.matches('.benefit-status-select')){
+       const value=e.target.value,code=e.target.dataset.benefit;
+       if(!saveBenefitStatus(code,value))return;
+       // 카드/선택 입력을 새로 그리지 않아 현재 스크롤과 사용자 포커스를 유지한다.
+       updateBenefitSummary();
+       markDirty(false);
+       toast('진행 상태 변경 · 암호화 자동 저장 중');
+       return;
+     }
+     if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='sectionFilter'){S.sectionFilter=e.target.value;S.route='all';render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
    byId('modalClose').addEventListener('click',closeModal);byId('modal').addEventListener('click',e=>{if(e.target===byId('modal')&&!S.conflict)closeModal()});
    byId('lockBtn').addEventListener('click',()=>clickAction({target:{closest:()=>({dataset:{action:'lock'}})}}));byId('syncNowBtn').addEventListener('click',refreshFromServer);
    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.data&&S.generation===S.savedGeneration&&S.backend&&!S.conflict)refreshFromServer()});
