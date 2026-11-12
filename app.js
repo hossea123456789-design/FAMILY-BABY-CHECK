@@ -724,7 +724,36 @@
  function toggleItem(id,checked){const i=S.data.items.find(x=>x.id===id);if(!i)return;if(i.repeat&&i.repeat!=='none'){i.lastDoneDate=checked?today():'';i.status='pending'}else i.status=checked?'done':'pending';i.updatedAt=stamp();markDirty()}
  function removeItem(id){const i=S.data.items.find(x=>x.id===id);if(!i||!confirm('정말 이 항목을 삭제하시겠습니까?'))return;i.deleted=true;i.updatedAt=stamp();closeModal();markDirty()}
  function actionCopyReco(key){const text=`${isToddler()?'생후 24~36개월 앞으로의 준비물·일정 관리':'임신·출산 준비 체크리스트'}의 '${key}' 품목을 2026년 한국 판매 기준으로 재검토해줘. 3개 후보의 브랜드·모델·장단점·현재 판매 가격·실제 구매 링크·안전 유의사항과 추천 이유를 출처와 함께 제공해줘. 이후 GitHub 프로젝트의 recommendations.js에 붙여넣을 수 있는 업데이트 객체도 작성해줘. 판매 여부와 가격은 최신 확인을 우선해.`;navigator.clipboard.writeText(text).then(()=>toast('추천 갱신 요청문을 복사했습니다.')).catch(()=>prompt('요청문 복사',text))}
- function showItemReco(id){const item=activeItems().find(i=>i.id===id);if(!item)return;if(!canRecommendProduct(item))return toast('지원금·일정 항목에는 제품 추천이 제공되지 않습니다.');const rr=recommendFor(item),link=safeUrl(item.referenceUrl);modal('제품 추천 · '+item.title,`<p class="warning">현재 실시간 가격·재고는 검증되지 않았습니다. 과거 참고 링크는 추천 확정이 아닙니다.</p>${rr?`<div class="card"><strong>선택 기준</strong><p class="tiny-note">${escape(rr.tip)}</p></div>`:'<p class="tiny-note">저장된 추천 정보가 없습니다. 새 추천 요청을 복사해 갱신할 수 있습니다.</p>'}${link?`<a href="${escape(link)}" rel="noopener noreferrer" target="_blank">원본 시트 참고 링크 열기</a>`:''}<div class="form-actions"><button class="primary" data-action="copy-reco" data-key="${escape(item.title)}">최신 추천 요청 복사</button><button class="secondary" data-action="edit" data-id="${escape(id)}">제품 정보 입력</button></div>`)}
+ function showItemReco(id){
+   const item=activeItems().find(i=>i.id===id);
+   if(!canRecommendProduct(item))return toast('지원금·행정·검진 항목에는 제품 추천을 제공하지 않습니다.');
+   const rec=recommendFor(item);
+   if(!rec)return modal('제품 정보 · '+item.title,'<p class="muted-small">검증된 구매 후보가 아직 없습니다. 연령과 현재 보유품을 확인한 뒤 제품명을 직접 입력해 주세요.</p>');
+   const age=recommendationAge(rec);
+   const choices=(rec.candidates||[]).map((c,index)=>{
+     const available=age.ready&&age.months>=c.minMonths;
+     return `<div class="reco-choice"><strong>${escape(c.name)}</strong><p>${escape(c.why)}</p><p class="muted-small">${escape(c.source)} · ${c.minMonths}개월+</p><div class="form-actions"><a class="secondary reco-open-link" href="${escape(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">제품 상세 보기 ↗</a><button type="button" class="primary" data-action="reco-use" data-id="${escape(item.id)}" data-candidate="${index}" ${available?'':'disabled'}>${available?'이 후보로 선택':age.label}</button></div></div>`;
+   }).join('');
+   modal('추천 구매 후보 · '+item.title,`<p class="reco-age-note">${escape(age.label)} · ${escape(rec.reason)}</p>${choices||'<p class="muted-small">구체적인 모델은 아직 선정하지 않았습니다. 제조사의 월령·안전 기준을 확인하세요.</p>'}<p class="tiny-note">후보를 선택하면 제품명과 참고 링크만 입력됩니다. 구매 완료·실제 지출액은 변경되지 않습니다. 재고와 판매가는 구매 시 다시 확인하세요.</p>`);
+ }
+ function chooseRecommendedProduct(id,index){
+   const item=S.data.items.find(i=>i.id===id&&!i.deleted);
+   const rec=recommendFor(item),candidate=rec?.candidates?.[index];
+   const age=recommendationAge(rec);
+   if(!canRecommendProduct(item)||!candidate||!age.ready||age.months<candidate.minMonths)return toast('해당 월령에 맞는 상품만 선택할 수 있습니다.');
+   if(item.product&&item.product!==candidate.name&&!confirm('기존 제품명을 다른 후보로 변경하시겠습니까?'))return;
+   item.product=candidate.name;
+   item.referenceUrl=safeUrl(candidate.url);
+   item.updatedAt=stamp();
+   closeModal();markDirty();toast('구매 후보를 입력했습니다. 구매 완료 처리하지 않았습니다.');
+ }
+ function addCuratedGood(id){
+   if(!isToddler())return;
+   const entry=(catalog().curatedGoods||[]).find(x=>x.id===id);
+   if(!entry||!S.data.sections.includes(entry.section))return;
+   if(S.data.items.some(i=>i.id==='curated-'+id||i.title===entry.title))return toast('이미 목록에 있는 항목입니다.');
+   S.data.items.push(buildCuratedItem(entry));markDirty();toast('추천 물품을 체크리스트에 추가했습니다.');
+ }
  function download(filename,blob){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
  async function exportEncrypted(){if(!S.data||!S.key)return toast('잠금 해제 후 사용하세요.');const cipher=await encryptPayload(S.data);download('baby-prep-'+S.family+'-'+today()+'.encrypted.json',new Blob([JSON.stringify({family:S.family,exportedAt:new Date().toISOString(),salt:S.authSalt,cipher,revision:S.revision,pending:S.generation>S.savedGeneration},null,2)],{type:'application/json'}));toast('현재 기록을 암호화 백업했습니다.')}
  async function importEncryptedFile(file){if(!S.data||!S.key)return;try{if(file.size>1500000)throw Error('백업 크기는 1.5MB 이하여야 합니다.');const backup=JSON.parse(await file.text());if(backup.family!==S.family||backup.salt!==S.authSalt||typeof backup.cipher!=='string')throw Error('다른 가족 공간이거나 암호화 키가 다른 백업입니다.');const recovered=await decryptPayload(backup.cipher);if(!Array.isArray(recovered.items)||!Array.isArray(recovered.sections))throw Error('올바른 백업 기록이 아닙니다.');if(!confirm('현재 화면의 기록을 백업 내용으로 바꾸시겠습니까? 서버 충돌이 발생하면 저장이 멈추고 선택할 수 있습니다.'))return;S.data=recovered;markDirty();toast('백업 복원 후 암호화 동기화 중');}catch(e){toast('백업 불러오기 실패: '+e.message)}}
@@ -750,6 +779,8 @@
   case 'export-csv':exportCSV();break;
   case 'copy-reco':actionCopyReco(el.dataset.key);break;
   case 'recommend-item':showItemReco(id);break;
+  case 'reco-use':chooseRecommendedProduct(id,Number(el.dataset.candidate));break;
+  case 'catalog-add':addCuratedGood(el.dataset.catalog);break;
   case 'section-remove':if(S.data.sections.length<=1)return toast('최소 한 개 탭이 필요합니다.');if(activeItems().some(i=>i.section===section))return toast('해당 탭의 항목을 먼저 다른 탭으로 옮기세요.');if(confirm('이 탭을 삭제하시겠습니까?')){S.data.sections=S.data.sections.filter(s=>s!==section);S.route='home';markDirty()}break;
  }}catch(err){toast(err.message)}}
  function submitAction(e){
