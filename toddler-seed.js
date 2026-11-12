@@ -3,7 +3,7 @@
  * 기존 '유하 육아 도구 모음'과 분리: 수면, 식사, 양치, 발달 관찰, 일일/주간 루틴 없음.
  * 미래 준비/일정, 예상·실제 구매 비용에만 집중한 24~36개월 시작 프리셋.
  */
-const BABY_PREP_TODDLER_SEED_VERSION = '2026-11-12-toddler-roadmap-v2';
+const BABY_PREP_TODDLER_SEED_VERSION = '2026-11-12-toddler-roadmap-v3';
 // 이름|분류|기준 월령(빈 문자열 가능)|예시 목표 날짜(빈 문자열 가능)|담당|안내
 // 목표일은 법정 마감일이 아닌 '미리 확인' 일정이며, 월령 날짜는 앱에 입력한 출생일 기준으로 자동 산출됩니다.
 const TODDLER_ROADMAP_TASKS = [
@@ -46,7 +46,9 @@ function babyPrepToddlerData(){
   let seq=0;
   const sections=['검진·의료 일정','어린이집·교육','정부지원·행정','발달단계 준비','안전·교체','구매·예산'];
   const base={status:'pending',acquisition:'undecided',quantity:1,estimate:0,actual:0,referencePrice:0,referenceUrl:'',product:'',giver:'',owner:'함께',priority:'normal',dueOffset:null,dueMonth:null,dueDate:'',notes:'',repeat:'none',lastDoneDate:'',updatedAt:0,deleted:false};
-  const tasks=TODDLER_ROADMAP_TASKS.map(([title,section,dueMonth,dueDate,owner,notes])=>({...base,id:'toddler-roadmap-'+(++seq),title,section,type:'task',priority:'high',dueMonth:dueMonth===''?null:dueMonth,dueDate,owner,notes}));
-  const goods=TODDLER_ROADMAP_GOODS.map(([title,section,dueMonth,dueDate,notes])=>({...base,id:'toddler-goods-'+(++seq),title,section,type:'item',dueMonth:dueMonth===''?null:dueMonth,dueDate,notes}));
-  return {schema:3,seedVersion:BABY_PREP_TODDLER_SEED_VERSION,profile:'toddler',settings:{dueDate:'',babyName:'',budget:0},sections,items:[...tasks,...goods]};
+  const retired=new Set(BABY_PREP_RECOMMENDATIONS.retiredTitles||[]);
+  const tasks=TODDLER_ROADMAP_TASKS.filter(([title])=>!retired.has(title)).map(([title,section,dueMonth,dueDate,owner,notes])=>({...base,id:'toddler-roadmap-'+(++seq),title,section,type:'task',priority:'high',dueMonth:dueMonth===''?null:dueMonth,dueDate,owner,notes}));
+  const goods=TODDLER_ROADMAP_GOODS.filter(([title])=>!retired.has(title)).map(([title,section,dueMonth,dueDate,notes])=>({...base,id:'toddler-goods-'+(++seq),title,section,type:'item',dueMonth:dueMonth===''?null:dueMonth,dueDate,notes}));
+  const recommendations=BABY_PREP_RECOMMENDATIONS.curatedGoods.map(x=>({...base,id:'curated-'+x.id,title:x.title,section:x.section,type:'item',dueMonth:x.month,dueDate:'',notes:x.notes,recommendationId:x.recId}));
+  return {schema:3,seedVersion:BABY_PREP_TODDLER_SEED_VERSION,profile:'toddler',settings:{dueDate:'',babyName:'',budget:0},sections,items:[...tasks,...goods,...recommendations]};
 }

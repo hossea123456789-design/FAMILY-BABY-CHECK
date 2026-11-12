@@ -22,6 +22,8 @@ const BABY_PREP_RECOMMENDATIONS={
   ],
   // 구버전 계정을 열 때 기존 구매 이력은 유지하고, 중복되지 않는 실물 구매후보만 추가합니다.
   curatedGoods:[
+    {id:'first-cars',title:'18개월+ 첫 자동차 · 듀플로 10474',section:'발달단계 준비',month:20,notes:'18개월부터 안전하게 시작하는 큰 블록 자동차. 보유 중이면 제외',recId:'first-cars'},
+    {id:'toddler-clock',title:'큰 숫자 전자시계 (아기용 안전 구조)',section:'발달단계 준비',month:24,notes:'시계를 좋아하는 아이용. 버튼전지 접근·밝기·소음·전도 위험 확인 후 선택',recId:'toddler-clock'},
     {id:'book-board',title:'24개월 그림책 · 달님 안녕 보드북',section:'발달단계 준비',month:24,notes:'짧은 일상 이야기, 두꺼운 보드북. 집에 이미 있다면 제외',recId:'book-board'},
     {id:'animal-puzzle',title:'24개월 동물 판퍼즐 · 핑크퐁',section:'발달단계 준비',month:24,notes:'개별 조각 크기·삼킴 위험·KC와 적정 연령을 확인',recId:'animal-puzzle'},
     {id:'animal-train',title:'동물 기차 블록 · 레고 듀플로 10412',section:'발달단계 준비',month:24,notes:'제조사 18개월 이상. 색·동물 매칭 및 조립 놀이, 이미 있으면 제외',recId:'animal-train'},
@@ -33,6 +35,8 @@ const BABY_PREP_RECOMMENDATIONS={
       {name:'한림출판사 달님 안녕 시리즈 보드북 4권 세트',minMonths:18,why:'짧은 반복 문장과 생활 장면, 튼튼한 보드북 구성.',url:'https://www.yes24.com/Product/Goods/4415176',source:'국내 도서 판매 페이지'}]},
     {id:'animal-puzzle',stage:'toddler',match:['판퍼즐','퍼즐'],minMonths:24,maxMonths:48,reason:'큰 조각을 제자리에 넣는 판퍼즐부터 시작하고, 조각 수와 KC 표시를 확인합니다.',candidates:[
       {name:'핑크퐁 아기 판퍼즐 동물 12종',minMonths:24,why:'낱개 동물 판퍼즐 구성. 조각 크기와 적정 연령은 구매 페이지에서 확인.',url:'https://www.coupang.com/vp/products/47740148',source:'국내 판매 페이지'}]},
+    {id:'first-cars',stage:'toddler',match:['첫 자동차 · 듀플로 10474','나의 첫 자동차'],minMonths:18,maxMonths:48,reason:'차를 좋아하는 18개월 이상 아이에게 큰 조립 브릭과 역할 놀이를 제공합니다.',candidates:[
+      {name:'레고 듀플로 나의 첫 자동차 10474',minMonths:18,why:'레고 공식 최소 18개월, 42개 부품으로 자동차 4종 조립.',url:'https://www.lego.com/ko-kr/product/creative-vehicles-10474',source:'레고 공식 상품'}]},
     {id:'animal-train',stage:'toddler',match:['동물 기차'],minMonths:18,maxMonths:48,reason:'기차 연결과 동물 색·모양 맞추기. 제조사에서 18개월 이상으로 안내합니다.',candidates:[
       {name:'레고 듀플로 나의 첫 동물 기차 10412',minMonths:18,why:'18개월+ 공식 권장, 19개 대형 브릭, 기차와 동물 조립.',url:'https://www.lego.com/ko-kr/product/animal-train-10412',source:'레고 공식 상품'}]},
     {id:'vehicle-block',stage:'toddler',match:['자동차 블록','건설 차량','자동차·건설놀이'],minMonths:24,maxMonths:60,reason:'차량을 좋아하는 유아에게 실제 차 모양 만들기와 굴리기 놀이. 만 2세 이상 제품을 선택합니다.',candidates:[
