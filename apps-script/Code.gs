@@ -119,6 +119,14 @@ function equals_(a,b){a=String(a||'');b=String(b||'');if(a.length!==b.length)ret
 /** 최초 한 번만 수동 실행: 3개 가족 전용 1회 등록 코드 생성. 코드는 실행 로그에만 출력합니다. */
 function generateEnrollmentCodes(){
  const props=PropertiesService.getScriptProperties();
+ // 바인딩된 전용 Google Sheet에서 실행하면 서버 환경을 자동 설정합니다.
+ const bound=SpreadsheetApp.getActiveSpreadsheet();
+ if(!bound||!bound.getSheetByName(DB_TAB))throw Error('APP_DB 탭이 있는 전용 시트에서 확장 프로그램 → Apps Script로 실행하세요.');
+ const configuredId=props.getProperty('SPREADSHEET_ID');
+ if(configuredId&&configuredId!==bound.getId())throw Error('이미 다른 스프레드시트와 연결되어 있습니다. 설정을 확인하세요.');
+ props.setProperty('SPREADSHEET_ID',bound.getId());
+ if(!props.getProperty('APP_ORIGINS'))props.setProperty('APP_ORIGINS','https://hossea123456789-design.github.io');
+ Logger.log('서버 연결 준비 완료. DB 탭: '+DB_TAB+' / 허용 출처: '+props.getProperty('APP_ORIGINS'));
  for(const pair of PAIR_CODES){
   const key='INVITE_HASH_'+pair.toUpperCase().replace(/-/g,'_');
   if(props.getProperty(key)){Logger.log(pair+': 이미 초대 코드 생성됨 (로그로 재표시 불가)');continue}
