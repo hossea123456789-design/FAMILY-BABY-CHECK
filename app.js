@@ -676,7 +676,7 @@
  }
  function recommendedCandidate(item,entry){
    const age=recommendationAge(entry);
-   return age.ready?(entry.candidates||[]).find(c=>c.minMonths<=age.months)||null;
+   return age.ready?((entry.candidates||[]).find(c=>c.minMonths<=age.months)||null):null;
  }
  function recommendationLine(item){
    if(item.type!=='item')return '';
