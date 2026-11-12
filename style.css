@@ -170,3 +170,37 @@ body.modal-open{overflow:hidden!important;overscroll-behavior:none}
 .home-summary-stat span{font-size:10px;color:#66768f;line-height:1.3}
 .home-summary-stat strong{font-size:15px;color:#273b60;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 @media(max-width:370px){.home-summary{gap:6px}.home-summary-stat{padding:10px 7px}.home-summary-stat strong{font-size:13px}}
+
+/* v1.4.0 — concrete, age-gated purchase candidates and discreet checklist suggestions */
+.item-recommendation{margin:8px 0 1px;padding:8px 10px;border-radius:10px;background:#f0f7ff;border:1px solid #deebff;display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;font-size:11px}
+.item-recommendation>span{color:#5473a4;font-size:10px;font-weight:780}
+.item-recommendation>strong{color:#2c568f;font-size:11px;font-weight:800;overflow-wrap:anywhere}
+.item-recommendation>em{font-size:10px;font-weight:760;color:#3b7494;font-style:normal;margin-left:auto;white-space:nowrap}
+.item-recommendation.future{background:#f7f8fb;border-color:#eceff5}
+.item-recommendation.future>strong,.item-recommendation.future>em{color:#8591a5}
+.reco-overview{border:1px solid #dce7fb;border-radius:13px;background:#f6f9ff;padding:11px 12px;display:flex;align-items:center;gap:8px;justify-content:space-between;margin:10px 0}
+.reco-overview strong{font-size:12px;color:#385d98;line-height:1.4}
+.reco-overview p{margin:4px 0 0;color:#6b7d94;font-size:11px;line-height:1.45}
+.reco-overview button{min-width:88px;white-space:nowrap;font-size:11px}
+.recommendation-card{margin:13px 0}
+.recommendation-card>p{font-size:12px;line-height:1.65;color:#65758f;margin:8px 0}
+.reco-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.reco-title strong{font-size:14px}
+.reco-title span{font-size:10px;padding:4px 8px;border-radius:8px;font-weight:760}
+.reco-now{color:#246f57;background:#e9f7f0}
+.reco-later{color:#697b94;background:#f0f3f7}
+.reco-option{padding:11px 0;border-top:1px solid #e6ecf6;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.reco-option>div{min-width:180px;flex:1}
+.reco-option strong{font-size:12px;display:block;line-height:1.4}
+.reco-option p,.reco-option small{font-size:11px;color:#6b7c93;margin:4px 0;line-height:1.45}
+.reco-option>a{color:#2d63b9;text-decoration:underline;text-underline-offset:3px;font-size:11px;font-weight:760}
+.reco-option .mini-btn{font-size:11px}
+.reco-age-note{background:#f0f6ff;border-radius:12px;padding:11px;color:#3e648e;font-size:12px;line-height:1.6}
+.reco-choice{padding:13px 0;border-bottom:1px solid #e9edf5}
+.reco-choice strong{display:block;font-size:13px;line-height:1.5}
+.reco-choice p{color:#61728e;font-size:12px;line-height:1.6;margin:6px 0}
+.reco-choice .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.reco-choice .form-actions>*{min-width:0;font-size:11px;text-align:center;line-height:1.35;padding:11px 9px}
+.reco-choice .form-actions>button:disabled{opacity:.55;background:#eef1f5;color:#647086;cursor:not-allowed}
+.reco-open-link{display:grid;place-items:center;text-decoration:none}
+@media(max-width:370px){.reco-overview{flex-direction:column;align-items:stretch}.reco-overview button{align-self:flex-end}.item-recommendation>em{margin-left:0}}
