@@ -14,20 +14,25 @@ const ctx={console,TextEncoder,TextDecoder,crypto:crypto.webcrypto,
  window:{BABY_PREP_CONFIG:{},addEventListener(){}},
  setTimeout,clearTimeout,Date,Uint8Array,URL,Math};
 vm.createContext(ctx);
-for(const f of ['seed.js','toddler-seed.js','benefits.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
+for(const f of ['seed.js','toddler-seed.js','recommendations.js','benefits.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
 const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
 assert(source.includes(' init();\n})();'),'앱 시작 진입점을 찾지 못했습니다. 테스트 스크립트를 확인하세요.');
-vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,babyProfileSummary,canRecommendProduct,modal,closeModal,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus,refreshMeta,submitAuth,derive,encryptPayload,storageSet,cacheKey,refreshFromServer,Bridge};\n})();'),ctx);
+vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,babyProfileSummary,canRecommendProduct,modal,closeModal,openEditor,cleanData,reconcileToddlerCatalog,recommendFor,recommendationAge,recommendationLine,renderReco,isRetiredPristine,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus,refreshMeta,submitAuth,derive,encryptPayload,storageSet,cacheKey,refreshFromServer,Bridge};\n})();'),ctx);
 const newborn=vm.runInContext('babyPrepInitialData()',ctx);
 const roadmap=vm.runInContext('babyPrepToddlerData()',ctx);
 const hooks=ctx.__testHooks;
 assert.equal(newborn.items.length,90);
-assert.equal(roadmap.items.length,32);
-assert.equal(roadmap.items.filter(i=>i.type==='task').length,22);
-assert.equal(roadmap.items.filter(i=>i.type==='item').length,10);
+assert.equal(roadmap.items.length,27);
+assert.equal(roadmap.items.filter(i=>i.type==='task').length,16);
+assert.equal(roadmap.items.filter(i=>i.type==='item').length,11);
 assert(roadmap.items.every(i=>i.repeat==='none'));
 assert.equal(roadmap.settings.babyName,'');
 assert.equal(roadmap.settings.dueDate,'');
+assert(!roadmap.items.some(x=>x.title==='친척에게 받을 물품·중고 물품 목록 정리'),'의미 없는 가족 물품 정리 태스크 제거');
+assert(!roadmap.items.some(x=>x.title==='분기별 큰 육아 지출·예산 계획'),'중복된 추상적 예산 계획 제거');
+assert(roadmap.items.some(x=>x.recommendationId==='first-cars'),'18개월 이상 자동차 구매 후보를 실제 체크리스트에 포함');
+assert(roadmap.items.some(x=>x.recommendationId==='magnetic-36'&&x.dueMonth===36),'자석 블록은 36개월 이후에만 검토');
+
 assert.equal(hooks.addMonthsClamped(new Date('2024-01-31T12:00:00'),1).getDate(),29);
 hooks.S.data=roadmap;
 hooks.S.data.settings.dueDate='2024-01-31';
@@ -39,6 +44,32 @@ assert.equal(hooks.budget().spent,12000);
 assert.equal(hooks.budget().needed,35000);
 price.acquisition='gift';assert.equal(hooks.budget().needed,0);
 // 기기별 가족 선택 복원: 선택 코드는 로컬에 저장하지만 PIN은 저장하지 않는다.
+
+// Curated catalog shows actual product names and age-gates rather than generic request-copy buttons.
+const firstCar=roadmap.items.find(x=>x.recommendationId==='first-cars');
+const futureMagnet=roadmap.items.find(x=>x.recommendationId==='magnetic-36');
+const baseDate=new Date();
+const birthday=new Date(baseDate.getFullYear(),baseDate.getMonth()-20,1);
+hooks.S.data.settings.dueDate=[birthday.getFullYear(),String(birthday.getMonth()+1).padStart(2,'0'),String(birthday.getDate()).padStart(2,'0')].join('-');
+const carCatalog=hooks.recommendFor(firstCar);
+assert.equal(carCatalog.candidates[0].name,'레고 듀플로 나의 첫 자동차 10474','실제 제조사 모델 제공');
+assert(carCatalog.candidates[0].url.startsWith('https://www.lego.com/ko-kr/'),'제조사 공식 구매 정보 링크');
+assert.equal(hooks.recommendationAge(carCatalog).ready,true,'20개월 유아에게 18개월 이상 자동차 후보 표시');
+assert.equal(hooks.recommendationAge(hooks.recommendFor(futureMagnet)).ready,false,'20개월 유아에게 36개월 이상 자석 블록은 추천하지 않음');
+assert(hooks.recommendationLine(firstCar).includes('레고 듀플로 나의 첫 자동차 10474'),'상품 이름이 체크리스트 행에 직접 나타남');
+assert(hooks.renderReco().includes('제품 정보 ↗'),'제품 추천 화면에 실제 상품 링크');
+assert(!hooks.canRecommendProduct({type:'item',title:'친척에게 받을 물품·중고 물품 목록 정리',section:'정부지원·행정'}),'행정 항목에는 상품 추천 금지');
+// Legacy migration archives untouched seed placeholders, never overwrites modified notes/purchases.
+const blank={id:'toddler-roadmap-22',title:'친척에게 받을 물품·중고 물품 목록 정리',section:'구매·예산',type:'task',status:'pending',acquisition:'undecided',quantity:1,actual:0,estimate:0,updatedAt:0,deleted:false};
+const edited={...blank,id:'toddler-roadmap-custom-edit',notes:'내가 기록한 가족 수령 계획',updatedAt:1234};
+const previousData=hooks.S.data;
+hooks.S.data={...previousData,items:[...previousData.items,{...blank},{...edited}]};
+assert.equal(hooks.reconcileToddlerCatalog(),true,'구버전 기본 태스크 자동 정리');
+assert.equal(hooks.S.data.items.find(x=>x.id==='toddler-roadmap-22').deleted,true,'변경 없는 불필요한 태스크만 숨김');
+assert.equal(hooks.S.data.items.find(x=>x.id===edited.id).deleted,false,'사용자가 직접 수정한 기존 기록은 보존');
+assert.equal(hooks.reconcileToddlerCatalog(),false,'이미 적용된 추천은 중복 추가하지 않음');
+hooks.S.data=previousData;
+
 const lastFamilyKey='baby-prep-last-selected-family-v1';
 const local=new Map();
 ctx.localStorage={
@@ -201,7 +232,7 @@ const view=hooks.renderBenefits();
 assert(view.includes('가족 혜택')&&view.includes('공식 안내'),'혜택 화면 및 공식 출처 표시');
 console.log('PASS: 25 benefits, national + Seoul + Gyeonggi, age/stage/area gates, month-start deadline, safe legacy migration');
 console.log('PASS: top-only navigation, checklist-only progress, task-first home, compact editing');
-console.log('PASS: newborn 90, toddler 32, month dates, cost, per-device family selection and recovery');
+console.log('PASS: newborn 90, curated toddler 27, month dates, cost, per-device family selection and recovery');
 
 async function testInstantLocalUnlock(){
   // Derive the same AES-GCM key used in production without weakening PBKDF2.
@@ -237,7 +268,7 @@ async function testInstantLocalUnlock(){
   assert.equal(nodes.mainScreen.classList.contains('hidden'),false,'서버 응답이 없어도 저장된 암호화 기록을 즉시 개방');
   assert.equal(nodes.authScreen.classList.contains('hidden'),true);
   assert.equal(hooks.S.revision,8);
-  assert.equal(hooks.S.data.items.length,32,'캐시를 AES-GCM 복호화하여 정확한 가족 데이터 복원');
+  assert.equal(hooks.S.data.items.length,27,'캐시를 AES-GCM 복호화하여 정확한 가족 데이터 복원');
   assert.equal(serverCalls,1,'잠금 해제 뒤 최신 서버 자료를 백그라운드에서 확인');
   assert.equal(nodes.syncMini.dataset.state,'loading','서버 확인 중에는 완료 상태를 표시하지 않음');
   // Never claim server sync succeeded while backend call is still pending.
