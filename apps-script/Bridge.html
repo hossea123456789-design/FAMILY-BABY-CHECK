@@ -1,0 +1,18 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Encrypted Bridge</title></head><body>
+<p>암호화 저장 연결용 페이지입니다. 가족 앱에서 접근해 주세요.</p>
+<script>
+'use strict';
+(function(){
+ const ALLOWED_ORIGINS=<?!= originsJson ?>;
+ const NONCE=<?!= nonceJson ?>;
+ // 등록된 출처의 부모 창에만 연결 완료를 알립니다.
+ ALLOWED_ORIGINS.forEach(origin=>window.top.postMessage({kind:'BABY_PREP_BRIDGE_READY',nonce:NONCE},origin));
+ window.addEventListener('message',function(event){
+  if(event.source!==window.top||!ALLOWED_ORIGINS.includes(event.origin))return;
+  const data=event.data||{};
+  if(data.kind!=='BABY_PREP_BRIDGE_REQUEST'||data.nonce!==NONCE||!Number.isSafeInteger(data.id)||!data.req)return;
+  const reply=(result,error)=>event.source.postMessage({kind:'BABY_PREP_BRIDGE_REPLY',nonce:NONCE,id:data.id,result,error},event.origin);
+  google.script.run.withSuccessHandler(result=>reply(result,null)).withFailureHandler(err=>reply(null,(err&&err.message)||'서버 오류')).bridgeRequest(data.req);
+ });
+})();
+</script></body></html>

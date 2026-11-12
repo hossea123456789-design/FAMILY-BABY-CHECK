@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko"><head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#2f6fed" />
+  <meta name="description" content="부부가 함께 쓰는 임신·출산 준비 체크리스트" />
+  <title>우리 가족 체크노트</title>
+  <link rel="stylesheet" href="style.css" />
+</head><body>
+<div class="app">
+  <section id="authScreen" class="auth-screen">
+    <div class="brand-icon">🍼</div><h1>우리 가족 체크노트</h1>
+    <p class="muted">출산 준비와 24~36개월 미래 일정·구매·예산을 관리하는 가족 체크리스트</p>
+    <div class="auth-card">
+      <h2>우리 부부 선택</h2>
+      <div class="family-grid" id="familyGrid">
+        <button class="family-choice active" data-family="ew-he">💙<strong>은원 &amp; 하은</strong><span>우리 부부 공간</span></button>
+        <button class="family-choice" data-family="ce-hy">🧡<strong>채은 &amp; 하영</strong><span>우리 부부 공간</span></button>
+        <button class="family-choice" data-family="hr-yw">💚<strong>하람 &amp; 예원</strong><span>24~36개월 준비·예산</span></button>
+      </div>
+      <p id="authMode" class="status-line">접속 상태 확인 중…</p>
+      <form id="authForm" class="stack">
+        <label id="inviteWrap" class="field hidden">최초 등록 초대 코드<input id="inviteInput" type="text" autocomplete="one-time-code" placeholder="전달받은 초대 코드" /></label>
+        <label class="field">비밀번호<input id="passwordInput" type="password" autocomplete="current-password" placeholder="비밀번호 입력" required minlength="12" /></label>
+        <label id="passwordAgainWrap" class="field hidden">비밀번호 확인<input id="passwordAgainInput" type="password" autocomplete="new-password" placeholder="같은 비밀번호를 다시 입력" /></label>
+        <p id="passwordGuide" class="hint">처음 설정한 비밀번호를 부부가 함께 사용합니다. 서버에 저장되지 않으며 분실 시 복구할 수 없습니다.</p>
+        <button id="authSubmit" type="submit" class="primary">잠금 해제</button>
+      </form>
+      <p id="authMessage" role="status" class="form-message"></p>
+      <p id="offlineBanner" class="warning hidden">미연결 미리보기: 이 기기에만 암호화 저장됩니다. GitHub Pages + Apps Script 설정 이후 부부 간 동기화가 시작됩니다. 공유 전에 서버 설정을 완료하세요.</p>
+    </div>
+  </section>
+  <section id="mainScreen" class="hidden">
+    <header class="app-header">
+      <div class="header-top"><div><span class="eyebrow" id="familyTitle">우리 가족</span><h1>우리 가족 체크노트</h1></div><button id="lockBtn" class="ghost" title="잠금">🔒 잠금</button></div>
+      <div class="save-row"><span id="syncStatus" class="sync-status">준비 중</span><button id="syncNowBtn" class="link-button">↻ 동기화</button></div>
+      <nav id="topTabs" class="tabs" aria-label="주요 메뉴"></nav>
+    </header>
+    <main id="mainContent"></main>
+    <footer class="bottom-nav" id="bottomNav"></footer>
+  </section>
+</div>
+<div id="modal" class="modal-backdrop hidden" role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-heading"><h2 id="modalTitle">항목 편집</h2><button id="modalClose" type="button" class="icon-btn" aria-label="닫기">✕</button></div><div id="modalBody"></div></div></div>
+<div id="toast" class="toast" aria-live="polite"></div>
+<iframe id="apiFrame" title="암호화 데이터 전송" class="api-frame" referrerpolicy="no-referrer"></iframe>
+<script src="config.js"></script><script src="seed.js"></script><script src="toddler-seed.js"></script><script src="recommendations.js"></script><script src="app.js"></script>
+</body></html>

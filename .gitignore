@@ -1,0 +1,10 @@
+# Never upload family backups or plaintext exports to public GitHub.
+*.encrypted.json
+*baby-prep-budget*.csv
+*.ics
+.env
+.env.*
+private/
+secrets/
+*.log
+.DS_Store
