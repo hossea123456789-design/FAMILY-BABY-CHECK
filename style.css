@@ -148,3 +148,25 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 .sync-mini[data-state="pending"] .sync-mini-value{color:#a27b37}
 .sync-mini[data-state="loading"] .sync-mini-track>span{background:#4d94dc}
 @media(max-width:355px){.sync-mini{width:91px}.sync-mini-track{width:48px;flex-basis:48px}.sync-mini-value{width:31px;flex-basis:31px}}
+
+/* v1.3.2 modal viewport fix — only modal content scrolls; background is fully dimmed */
+body.modal-open{overflow:hidden!important;overscroll-behavior:none}
+.modal-backdrop{inset:0!important;position:fixed!important;width:100vw;height:100dvh;min-height:100dvh;max-height:100dvh;padding:0!important;overflow:hidden!important;align-items:flex-end!important;justify-content:center!important;background:rgba(17,29,50,.63)!important;overscroll-behavior:contain;touch-action:pan-y}
+.modal-backdrop.hidden{display:none!important}
+.modal{display:flex!important;flex-direction:column;flex:0 1 auto;width:min(100%,520px)!important;max-height:calc(100dvh - max(12px,env(safe-area-inset-top)))!important;min-height:0;border-radius:20px 20px 0 0!important;padding:0!important;overflow:hidden!important;box-shadow:0 -8px 34px #0d183045;background:#fff!important}
+.modal-heading{flex:0 0 auto;position:relative;z-index:2;background:#fff;margin:0!important;padding:17px 17px 12px;border-bottom:1px solid #edf0f6}
+#modalBody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;padding:15px 17px calc(20px + env(safe-area-inset-bottom))}
+#modalBody .editor-sticky-actions{bottom:calc(-20px - env(safe-area-inset-bottom));background:#fff;z-index:2}
+@media(min-width:621px){.modal-backdrop{padding:20px!important;align-items:center!important}.modal{border-radius:20px!important;max-height:min(87dvh,810px)!important}}
+/* v1.3.2 concise home profile and six meaningful metrics, never completion bar on home */
+.home-profile{border:1px solid #dce7fb;border-radius:16px;background:linear-gradient(135deg,#f1f6ff,#fff);padding:15px}
+.home-profile-main{display:flex;align-items:flex-start;justify-content:space-between;gap:9px}
+.home-profile h2{margin:4px 0 5px;font-size:20px;line-height:1.3}
+.home-profile-age{font-size:14px;font-weight:820;color:#285eaf;margin:0 0 4px}
+.home-profile-extra{font-size:11px;color:#6c7b92;margin:0}
+.home-profile-edit{flex:0 0 auto;border:1px solid #dae4f2;border-radius:10px;background:#fff;color:#47658f;font-size:11px;font-weight:760;padding:8px 9px}
+.home-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.home-summary-stat{min-width:0;display:flex;flex-direction:column;gap:5px;padding:11px 9px;border:1px solid #e6ecf5;border-radius:12px;background:#fff}
+.home-summary-stat span{font-size:10px;color:#66768f;line-height:1.3}
+.home-summary-stat strong{font-size:15px;color:#273b60;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+@media(max-width:370px){.home-summary{gap:6px}.home-summary-stat{padding:10px 7px}.home-summary-stat strong{font-size:13px}}

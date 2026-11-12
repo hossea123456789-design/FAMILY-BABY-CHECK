@@ -363,8 +363,36 @@
      if(!quiet)toast(e.message);
    }
  }
- function modal(title,html){byId('modalTitle').textContent=title;byId('modalBody').innerHTML=html;byId('modal').classList.remove('hidden')}
- function closeModal(){byId('modal').classList.add('hidden');byId('modalBody').innerHTML=''}
+ let modalPageScroll=null;
+ function modal(title,html){
+   if(modalPageScroll===null&&document.body?.style){
+     modalPageScroll=window.scrollY||document.documentElement?.scrollTop||0;
+     document.body.style.position='fixed';
+     document.body.style.top='-'+modalPageScroll+'px';
+     document.body.style.left='0';
+     document.body.style.right='0';
+     document.body.style.width='100%';
+     document.body.classList.add('modal-open');
+   }
+   byId('modalTitle').textContent=title;
+   byId('modalBody').innerHTML=html;
+   byId('modalBody').scrollTop=0;
+   byId('modal').classList.remove('hidden');
+ }
+ function closeModal(){
+   byId('modal').classList.add('hidden');
+   byId('modalBody').innerHTML='';
+   if(modalPageScroll!==null&&document.body?.style){
+     const scroll=modalPageScroll;modalPageScroll=null;
+     document.body.classList.remove('modal-open');
+     document.body.style.position='';
+     document.body.style.top='';
+     document.body.style.left='';
+     document.body.style.right='';
+     document.body.style.width='';
+     if(typeof window.scrollTo==='function')window.scrollTo(0,scroll);
+   }
+ }
  function showConflict(){modal('기록 충돌 감지',`<p class="warning">다른 휴대폰에서 먼저 저장했습니다. 자동 덮어쓰기를 중단했습니다. 이 기기 기록은 암호화 보관되어 있습니다.</p><p class="tiny-note">서버 최신 기록을 불러오거나, 현재 기기의 기록으로 서버를 교체할 수 있습니다. 두 변경을 자동 병합하지 않습니다.</p><div class="stack"><button class="secondary" data-action="conflict-remote">서버 최신 기록 불러오기</button><button class="danger" data-action="conflict-local">현재 기록으로 서버 덮어쓰기</button><button class="ghost" data-action="export">암호화 백업 내려받기</button></div>`)}
  async function resolveConflict(choice){
    if(!S.conflict)return;
@@ -505,21 +533,50 @@
      <div class="card">${near.length?near.map(x=>`<div class="benefit-preview"><span>${escape(x.title)}</span><button class="mini-btn" data-action="route" data-route="benefits">확인</button></div>`).join(''):'<div class="muted-small">현재 단계에서 확인할 혜택을 모두 검토했습니다.</div>'}</div></section>`;
  }
 
+ function babyProfileSummary(){
+   const st=S.data.settings||{},birth=isToddler()?st.dueDate:st.birthDate;
+   const age=ageInMonths(birth);
+   if(birth&&age!==null){
+     const birthday=dateValue(birth),current=dateValue(today());
+     const anniversary=addMonthsClamped(birthday,age);
+     const dayNo=(a,b)=>Math.round((Date.UTC(a.getFullYear(),a.getMonth(),a.getDate())-Date.UTC(b.getFullYear(),b.getMonth(),b.getDate()))/86400000);
+     const daysAfterMonth=Math.max(0,dayNo(current,anniversary));
+     const totalDays=Math.max(0,dayNo(current,birthday));
+     const years=Math.floor(age/12);
+     return {name:st.babyName||'우리 아이',subtitle:'만 '+years+'세 · 생후 '+age+'개월 '+daysAfterMonth+'일',detail:totalDays+'일째 · '+birth+' 출생',missing:false};
+   }
+   if(!isToddler()&&dateValue(st.dueDate)){
+     const d=daysUntil(st.dueDate);
+     return {name:st.babyName||'출산 준비',subtitle:d>=0?'출산까지 D-'+d:'출산 예정일 D+'+Math.abs(d),detail:'출산예정일 '+st.dueDate,missing:false};
+   }
+   return {name:st.babyName||'우리 아이',subtitle:isToddler()?'출생일을 설정하면 월령을 표시합니다':'출산예정일을 설정하면 D-day를 표시합니다',detail:'가족 설정에서 아이 정보를 한 번 등록하세요',missing:true};
+ }
  function renderHome(){
-   const B=budget(),due=S.data.settings.dueDate,diff=daysUntil(due),alerts=alertItems().slice(0,3),toddler=isToddler();
-   const name=toddler?escape(S.data.settings.babyName||'우리 아이'):'출산 준비';
-   const when=toddler?(due?'생후 '+ageInMonths(due)+'개월':'아이 출생일을 설정해 주세요'):(due?'출산 '+(diff>=0?'D-'+diff:'D+'+Math.abs(diff)):'출산예정일 미등록');
-   const firstSection=toddler?'구매·예산':'출산 가방';
-   const tasks=alerts.length?alerts.map(renderItemRow).join(''):'<p class="home-empty">가까운 일정이 없습니다. 체크리스트에서 필요한 준비를 확인해 보세요.</p>';
-   const benefits=benefitStats();
+   const B=budget(),profile=babyProfileSummary(),upcoming=alertItems(),near=upcoming.slice(0,3);
+   const remaining=B.items.filter(i=>!doneNow(i)&&i.status!=='skipped').length;
+   const benefitCount=benefitStats().pending.length;
+   const tasks=near.length?near.map(renderItemRow).join(''):'<p class="home-empty">14일 이내 확인할 일정이 없습니다. 체크리스트에서 준비 항목을 확인하세요.</p>';
+   const metrics=[
+     {label:'준비 항목',value:B.items.length+'개'},
+     {label:'완료',value:B.done+'개'},
+     {label:'남은 준비',value:remaining+'개'},
+     {label:'14일 내 확인',value:upcoming.length+'개'},
+     {label:'기록된 지출',value:fmt(B.spent)},
+     {label:'추가 예상비',value:fmt(B.needed)}
+   ];
+   const firstSection=isToddler()?'구매·예산':'출산 가방';
    return `<div class="home-page">
-     <div class="home-intro"><div><span class="eyebrow">지금 필요한 준비</span><h2>${name}</h2><p>${when}</p></div><span class="home-todo">${B.items.filter(i=>!doneNow(i)&&i.status!=='skipped').length}<small>남은 항목</small></span></div>
-     <div class="home-heading"><h3>다가오는 일정</h3><button type="button" class="link-button" data-action="route" data-route="timeline">일정 보기</button></div>
+     <section class="home-profile">
+       <div class="home-profile-main"><div><span class="eyebrow">아이 정보</span><h2>${escape(profile.name)}</h2><p class="home-profile-age">${escape(profile.subtitle)}</p><p class="home-profile-extra">${escape(profile.detail)}</p></div>
+         <button type="button" class="home-profile-edit" data-action="route" data-route="settings" aria-label="아이 정보 및 가족 설정 열기">⚙ 설정</button></div>
+     </section>
+     <section class="home-summary" aria-label="가족 준비 요약">${metrics.map(m=>`<div class="home-summary-stat"><span>${escape(m.label)}</span><strong>${escape(m.value)}</strong></div>`).join('')}</section>
+     <div class="home-heading"><h3>곧 확인할 일</h3><button type="button" class="link-button" data-action="route" data-route="timeline">전체 일정</button></div>
      <div class="card home-tasks">${tasks}</div>
      <button class="primary home-quick-add" type="button" data-action="quick-add" data-section="${firstSection}">＋ 새 준비 항목 추가</button>
      <div class="home-shortcuts">
-       <button type="button" class="home-shortcut" data-action="route" data-route="benefits"><span>🎁</span><span><strong>가족 혜택</strong><small>확인할 지원금 ${benefits.pending.length}건</small></span><b aria-hidden="true">›</b></button>
-       <button type="button" class="home-shortcut" data-action="route" data-route="budget"><span>₩</span><span><strong>준비 비용</strong><small>지출 ${fmt(B.spent)} · 예상 ${fmt(B.needed)}</small></span><b aria-hidden="true">›</b></button>
+       <button type="button" class="home-shortcut" data-action="route" data-route="benefits"><span>🎁</span><span><strong>가족 혜택</strong><small>신청·자격 미확인 ${benefitCount}건</small></span><b aria-hidden="true">›</b></button>
+       <button type="button" class="home-shortcut" data-action="route" data-route="budget"><span>₩</span><span><strong>예산 자세히 보기</strong><small>실제 지출·예정 비용 및 항목별 내역</small></span><b aria-hidden="true">›</b></button>
      </div>${!S.backend?'<p class="warning">이 기기에서만 저장되는 미리보기 모드입니다.</p>':''}
    </div>`;
  }
@@ -566,9 +623,12 @@
  function recommendFor(item){return BABY_PREP_RECOMMENDATIONS.categories.find(x=>item?.title?.includes(x.key)||x.key.includes(item?.title||'~'))}
  function renderReco(){const R=BABY_PREP_RECOMMENDATIONS;return `<h2 class="section-title">🛍️ 제품·추천 참고</h2><p class="warning">${escape(R.note)} 갱신일: ${escape(R.updatedAt)} · 자동 AI 호출 및 토큰 과금 없음</p>${R.categories.filter(r=>isToddler()?r.stage==='toddler':r.stage!=='toddler').map(r=>{const item=activeItems().find(i=>i.title.includes(r.key));return `<div class="card recommend"><div class="inline"><h3>${escape(r.key)}</h3><button class="mini-btn" data-action="copy-reco" data-key="${escape(r.key)}">새 추천 요청 복사</button></div><p>${escape(r.tip)}</p>${safeUrl(item?.referenceUrl)?`<a class="linkline" href="${escape(safeUrl(item.referenceUrl))}" target="_blank" rel="noopener noreferrer">원본 시트의 과거 제품 참고 링크</a>`:'<span class="muted-small">등록된 제품 참고 링크 없음</span>'}</div>`}).join('')}<div class="help-block">새 추천 요청은 ChatGPT에 붙여넣고, 검토가 끝난 제품·가격·링크를 이 저장소의 <code>recommendations.js</code>에 갱신하는 방식입니다. 가족이 앱에서 볼 때마다 모델을 호출하지 않습니다.</div>`}
  function renderSettings(){const st=S.data.settings;return `<h2 class="section-title">⚙️ 가족 설정</h2><p class="muted-small">아이 정보와 거주지를 한 번만 등록하면 일정과 혜택에 적용됩니다.</p><form id="settingsForm" class="stack"><label class="field">${isToddler()?'아이 출생일 (한 번 등록 · 모든 월령 일정 자동 계산)':'출산예정일'}<input name="dueDate" type="date" value="${escape(st.dueDate||'')}"></label><label class="field">${isToddler()?'아이 이름(선택)':'아기 태명(선택)'}<input name="babyName" maxlength="60" value="${escape(st.babyName||'')}" placeholder="${isToddler()?'우리 아이':'태명'}"></label>${!isToddler()?`<label class="field">출산 후 실제 아기 출생일 (출생한 경우)<input name="birthDate" type="date" value="${escape(st.birthDate||'')}"></label>`:''}<div class="settings-region"><label class="field">거주 지역 (혜택 추천 기준)<select name="residenceRegion"><option value="unknown" ${!['seoul','gyeonggi','other'].includes(st.residenceRegion)?'selected':''}>아직 선택 안 함 · 전국 혜택</option><option value="seoul" ${st.residenceRegion==='seoul'?'selected':''}>서울특별시</option><option value="gyeonggi" ${st.residenceRegion==='gyeonggi'?'selected':''}>경기도</option><option value="other" ${st.residenceRegion==='other'?'selected':''}>그 외 지역 · 전국 혜택 + 지자체 확인</option></select></label><label class="field">시·군·구 (선택)<input name="residenceCity" maxlength="40" value="${escape(st.residenceCity||'')}" placeholder="예: 성남시, 관악구"></label><p class="tiny-note">설정값은 이 부부 공간에 암호화 저장합니다. 지역을 바꿔도 기존 혜택 확인 기록은 삭제하지 않습니다.</p></div><label class="field">준비 예산 (원)<input name="budget" type="number" min="0" step="100" value="${Number(st.budget)||0}"></label><button class="primary" type="submit">설정 저장</button></form><details class="settings-advanced"><summary>체크리스트 분류 관리</summary><form id="sectionForm" class="inline"><input name="section" class="control" maxlength="25" placeholder="예: 생후 1개월 준비"><button class="secondary" type="submit">분류 추가</button></form><div class="card">${S.data.sections.map(s=>`<div class="budget-row"><strong>${escape(s)}</strong><button class="mini-btn" data-action="section-remove" data-section="${escape(s)}">삭제</button></div>`).join('')}</div><p class="tiny-note">분류 삭제 시 해당 분류에 항목이 남아 있으면 삭제되지 않습니다. 다른 탭으로 물품을 옮긴 후 삭제할 수 있습니다.</p></details><details class="settings-advanced"><summary>예산·제품·데이터 관리</summary><h3 class="subhead">부가 기능</h3><button class="secondary" data-action="route" data-route="benefits">🎁 가족 지원금·혜택 확인</button><div class="list-actions"><button class="secondary" data-action="route" data-route="budget">지출 상세</button><button class="secondary" data-action="route" data-route="reco">제품 추천 참고</button></div><h3 class="subhead">🔐 데이터 보호·백업</h3><div class="stack"><button class="secondary" data-action="export">암호화 백업 파일 저장</button><button class="secondary" data-action="import-backup">암호화 백업 불러오기</button><input id="backupFile" class="hidden" type="file" accept=".json,application/json"><button class="secondary" data-action="sync">서버 최신 자료 동기화</button><button class="secondary" data-action="export-ics">일정 캘린더(.ics) 내보내기</button><button class="danger" data-action="lock">현재 기기 잠그기</button></div><p class="warning">PIN을 잊으면 서버 관리자도 기록을 복호화할 수 없습니다. 암호화 백업만으로는 복원할 수 없으며 기존 PIN이 필요합니다. 다른 사람에게 PIN을 공개하지 마세요.</p></details><p class="muted-small">v${escape(CONFIG.version||'0.9.0')} · 현재 모드: ${S.backend?'Google Sheets 서버 동기화':'로컬 미리보기'} · 가족 공간 ${escape(FAMILY[S.family])}</p>`}
+ function canRecommendProduct(item){
+   return !!item&&item.type==='item'&&!/(지원금|지원사업|지원|수당|바우처|급여|보험|의료|검진|접종|행정|신청|서류|휴가|돌봄비|예약|상담|정부|정책|교육비|등록|수급|복지|출산신고)/.test(String(item.title||''));
+ }
  function openEditor(id,section,kind){const original=activeItems().find(x=>x.id===id);const i=original?{...original}:{id:uid(),title:'',section:section||S.data.sections[0],type:kind||(/일정|검진|지원|행정|할 일/.test(section||'')?'task':'item'),status:'pending',acquisition:'undecided',quantity:1,estimate:0,actual:0,referencePrice:0,referenceUrl:'',product:'',giver:'',owner:'함께',priority:'normal',dueMonth:null,dueOffset:isToddler()?null:-30,dueDate:'',repeat:'none',lastDoneDate:'',notes:'',updatedAt:0,deleted:false};
    const opt=(arr,v)=>arr.map(([value,label])=>`<option value="${escape(value)}" ${v===value?'selected':''}>${escape(label)}</option>`).join('');
-   modal(original?'항목 수정':'준비물·일정 추가',`<form id="itemForm"><input type="hidden" name="id" value="${escape(i.id)}"><div class="info-grid"><label class="field full">준비 항목명<input name="title" value="${escape(i.title)}" maxlength="120" required autofocus placeholder="예: 기저귀"></label><label class="field">분류<select name="section">${opt(S.data.sections.map(x=>[x,x]),i.section)}</select></label><label class="field">유형<select name="type">${opt([['item','물품'],['task','할 일·일정']],i.type)}</select></label><label class="field">현재 상태<select name="status">${opt([['pending','미완료'],['done','완료'],['skipped','제외']],i.status)}</select></label><label class="field">준비 방법<select name="acquisition">${opt([['undecided','미정'],['buy','직접 구매'],['gift','가족에게 받기'],['second','중고 구매'],['rental','대여'],['already','집에 있음']],i.acquisition)}</select></label></div><fieldset class="form-section"><legend>비용 · 일정</legend><div class="info-grid"><label class="field">예상 구매비 (총액, 원)<input name="estimate" type="number" min="0" step="1" value="${Number(i.estimate)||0}"></label><label class="field">실제 지출액 (총액, 원)<input name="actual" type="number" min="0" step="1" value="${Number(i.actual)||0}"></label><label class="field">개별 마감일(우선 적용)<input name="dueDate" type="date" value="${escape(i.dueDate||'')}"></label><label class="field full">메모<textarea name="notes" rows="2" maxlength="1500">${escape(i.notes||'')}</textarea></label></div></fieldset><details class="editor-more"><summary>추가 정보 · 담당, 수량, 제품, 목표 월령, 반복, 링크</summary><p class="tiny-note">아기 출생일·출산예정일은 설정에서 한 번 입력합니다. 여기의 월령은 개별 항목의 목표 시점입니다.</p><div class="info-grid"><label class="field">반복<select name="repeat">${opt([['none','반복 없음'],['daily','매일'],['weekly','매주'],['monthly','매월']],i.repeat||'none')}</select></label><label class="field">담당<select name="owner">${opt([['함께','함께'],['남편','남편'],['아내','아내']],i.owner)}</select></label><label class="field">수량<input name="quantity" type="number" min="1" max="10000" value="${Number(i.quantity)||1}"></label><label class="field full">제품명 / 모델명<input name="product" maxlength="180" value="${escape(i.product||'')}" placeholder="예: 모델명 또는 브랜드"></label><label class="field full">받을 사람 또는 제공해 주는 가족<input name="giver" maxlength="120" value="${escape(i.giver||'')}" placeholder="예: 형님 / 부모님"></label>${isToddler()?`<label class="field">출생일 기준 목표 월령 (개월)<input name="dueMonth" type="number" min="0" max="120" value="${i.dueMonth==null?'':Number(i.dueMonth)}"></label>`:''}<label class="field">${isToddler()?'출생일 기준 +일(선택)':'출산예정일 기준(일)'}<input name="dueOffset" type="number" min="-300" max="3000" value="${i.dueOffset==null?'':Number(i.dueOffset)}"></label><label class="field full">제품 / 구매 링크<input name="referenceUrl" type="url" value="${escape(i.referenceUrl||'')}" placeholder="https://..."></label></div><p class="hint">원본 기록의 참고 가격 ${fmt(i.referencePrice||0)} · 과거 자료이며 예상 예산에 자동 반영하지 않습니다.</p></details><div class="form-actions editor-sticky-actions"><button type="submit" class="primary">변경 저장</button><button type="button" class="secondary" data-action="close">취소</button></div>${original?`<div class="form-actions"><button type="button" class="danger" data-action="delete" data-id="${escape(i.id)}">항목 삭제</button><button type="button" class="secondary" data-action="recommend-item" data-id="${escape(i.id)}">추천 받기</button></div>`:''}</form>`)
+   modal(original?'항목 수정':'준비물·일정 추가',`<form id="itemForm"><input type="hidden" name="id" value="${escape(i.id)}"><div class="info-grid"><label class="field full">준비 항목명<input name="title" value="${escape(i.title)}" maxlength="120" required autofocus placeholder="예: 기저귀"></label><label class="field">분류<select name="section">${opt(S.data.sections.map(x=>[x,x]),i.section)}</select></label><label class="field">유형<select name="type">${opt([['item','물품'],['task','할 일·일정']],i.type)}</select></label><label class="field">현재 상태<select name="status">${opt([['pending','미완료'],['done','완료'],['skipped','제외']],i.status)}</select></label><label class="field">준비 방법<select name="acquisition">${opt([['undecided','미정'],['buy','직접 구매'],['gift','가족에게 받기'],['second','중고 구매'],['rental','대여'],['already','집에 있음']],i.acquisition)}</select></label></div><fieldset class="form-section"><legend>비용 · 일정</legend><div class="info-grid"><label class="field">예상 구매비 (총액, 원)<input name="estimate" type="number" min="0" step="1" value="${Number(i.estimate)||0}"></label><label class="field">실제 지출액 (총액, 원)<input name="actual" type="number" min="0" step="1" value="${Number(i.actual)||0}"></label><label class="field">개별 마감일(우선 적용)<input name="dueDate" type="date" value="${escape(i.dueDate||'')}"></label><label class="field full">메모<textarea name="notes" rows="2" maxlength="1500">${escape(i.notes||'')}</textarea></label></div></fieldset><details class="editor-more"><summary>추가 정보 · 담당, 수량, 제품, 목표 월령, 반복, 링크</summary><p class="tiny-note">아기 출생일·출산예정일은 설정에서 한 번 입력합니다. 여기의 월령은 개별 항목의 목표 시점입니다.</p><div class="info-grid"><label class="field">반복<select name="repeat">${opt([['none','반복 없음'],['daily','매일'],['weekly','매주'],['monthly','매월']],i.repeat||'none')}</select></label><label class="field">담당<select name="owner">${opt([['함께','함께'],['남편','남편'],['아내','아내']],i.owner)}</select></label><label class="field">수량<input name="quantity" type="number" min="1" max="10000" value="${Number(i.quantity)||1}"></label><label class="field full">제품명 / 모델명<input name="product" maxlength="180" value="${escape(i.product||'')}" placeholder="예: 모델명 또는 브랜드"></label><label class="field full">받을 사람 또는 제공해 주는 가족<input name="giver" maxlength="120" value="${escape(i.giver||'')}" placeholder="예: 형님 / 부모님"></label>${isToddler()?`<label class="field">출생일 기준 목표 월령 (개월)<input name="dueMonth" type="number" min="0" max="120" value="${i.dueMonth==null?'':Number(i.dueMonth)}"></label>`:''}<label class="field">${isToddler()?'출생일 기준 +일(선택)':'출산예정일 기준(일)'}<input name="dueOffset" type="number" min="-300" max="3000" value="${i.dueOffset==null?'':Number(i.dueOffset)}"></label><label class="field full">제품 / 구매 링크<input name="referenceUrl" type="url" value="${escape(i.referenceUrl||'')}" placeholder="https://..."></label></div><p class="hint">원본 기록의 참고 가격 ${fmt(i.referencePrice||0)} · 과거 자료이며 예상 예산에 자동 반영하지 않습니다.</p></details><div class="form-actions editor-sticky-actions"><button type="submit" class="primary">변경 저장</button><button type="button" class="secondary" data-action="close">취소</button></div>${original?`<div class="form-actions"><button type="button" class="danger" data-action="delete" data-id="${escape(i.id)}">항목 삭제</button>${canRecommendProduct(i)?`<button type="button" class="secondary" data-action="recommend-item" data-id="${escape(i.id)}">제품 추천</button>`:''}</div>`:''}</form>`)
  }
  function saveEditor(e){e.preventDefault();const f=new FormData(e.target),id=String(f.get('id')),title=String(f.get('title')||'').trim(),section=String(f.get('section'));
    if(!title||!S.data.sections.includes(section))return toast('항목명과 분류를 확인하세요.');
@@ -580,7 +640,7 @@
  function toggleItem(id,checked){const i=S.data.items.find(x=>x.id===id);if(!i)return;if(i.repeat&&i.repeat!=='none'){i.lastDoneDate=checked?today():'';i.status='pending'}else i.status=checked?'done':'pending';i.updatedAt=stamp();markDirty()}
  function removeItem(id){const i=S.data.items.find(x=>x.id===id);if(!i||!confirm('정말 이 항목을 삭제하시겠습니까?'))return;i.deleted=true;i.updatedAt=stamp();closeModal();markDirty()}
  function actionCopyReco(key){const text=`${isToddler()?'생후 24~36개월 앞으로의 준비물·일정 관리':'임신·출산 준비 체크리스트'}의 '${key}' 품목을 2026년 한국 판매 기준으로 재검토해줘. 3개 후보의 브랜드·모델·장단점·현재 판매 가격·실제 구매 링크·안전 유의사항과 추천 이유를 출처와 함께 제공해줘. 이후 GitHub 프로젝트의 recommendations.js에 붙여넣을 수 있는 업데이트 객체도 작성해줘. 판매 여부와 가격은 최신 확인을 우선해.`;navigator.clipboard.writeText(text).then(()=>toast('추천 갱신 요청문을 복사했습니다.')).catch(()=>prompt('요청문 복사',text))}
- function showItemReco(id){const item=activeItems().find(i=>i.id===id);if(!item)return;const rr=recommendFor(item),link=safeUrl(item.referenceUrl);modal('제품 추천 · '+item.title,`<p class="warning">현재 실시간 가격·재고는 검증되지 않았습니다. 과거 참고 링크는 추천 확정이 아닙니다.</p>${rr?`<div class="card"><strong>선택 기준</strong><p class="tiny-note">${escape(rr.tip)}</p></div>`:'<p class="tiny-note">저장된 추천 정보가 없습니다. 새 추천 요청을 복사해 갱신할 수 있습니다.</p>'}${link?`<a href="${escape(link)}" rel="noopener noreferrer" target="_blank">원본 시트 참고 링크 열기</a>`:''}<div class="form-actions"><button class="primary" data-action="copy-reco" data-key="${escape(item.title)}">최신 추천 요청 복사</button><button class="secondary" data-action="edit" data-id="${escape(id)}">제품 정보 입력</button></div>`)}
+ function showItemReco(id){const item=activeItems().find(i=>i.id===id);if(!item)return;if(!canRecommendProduct(item))return toast('지원금·일정 항목에는 제품 추천이 제공되지 않습니다.');const rr=recommendFor(item),link=safeUrl(item.referenceUrl);modal('제품 추천 · '+item.title,`<p class="warning">현재 실시간 가격·재고는 검증되지 않았습니다. 과거 참고 링크는 추천 확정이 아닙니다.</p>${rr?`<div class="card"><strong>선택 기준</strong><p class="tiny-note">${escape(rr.tip)}</p></div>`:'<p class="tiny-note">저장된 추천 정보가 없습니다. 새 추천 요청을 복사해 갱신할 수 있습니다.</p>'}${link?`<a href="${escape(link)}" rel="noopener noreferrer" target="_blank">원본 시트 참고 링크 열기</a>`:''}<div class="form-actions"><button class="primary" data-action="copy-reco" data-key="${escape(item.title)}">최신 추천 요청 복사</button><button class="secondary" data-action="edit" data-id="${escape(id)}">제품 정보 입력</button></div>`)}
  function download(filename,blob){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
  async function exportEncrypted(){if(!S.data||!S.key)return toast('잠금 해제 후 사용하세요.');const cipher=await encryptPayload(S.data);download('baby-prep-'+S.family+'-'+today()+'.encrypted.json',new Blob([JSON.stringify({family:S.family,exportedAt:new Date().toISOString(),salt:S.authSalt,cipher,revision:S.revision,pending:S.generation>S.savedGeneration},null,2)],{type:'application/json'}));toast('현재 기록을 암호화 백업했습니다.')}
  async function importEncryptedFile(file){if(!S.data||!S.key)return;try{if(file.size>1500000)throw Error('백업 크기는 1.5MB 이하여야 합니다.');const backup=JSON.parse(await file.text());if(backup.family!==S.family||backup.salt!==S.authSalt||typeof backup.cipher!=='string')throw Error('다른 가족 공간이거나 암호화 키가 다른 백업입니다.');const recovered=await decryptPayload(backup.cipher);if(!Array.isArray(recovered.items)||!Array.isArray(recovered.sections))throw Error('올바른 백업 기록이 아닙니다.');if(!confirm('현재 화면의 기록을 백업 내용으로 바꾸시겠습니까? 서버 충돌이 발생하면 저장이 멈추고 선택할 수 있습니다.'))return;S.data=recovered;markDirty();toast('백업 복원 후 암호화 동기화 중');}catch(e){toast('백업 불러오기 실패: '+e.message)}}
