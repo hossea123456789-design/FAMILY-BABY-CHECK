@@ -24,7 +24,16 @@
    if(remember){try{localStorage.setItem(LAST_FAMILY_KEY,family)}catch{/* private mode에서도 선택은 유지 */}}
  }
  const enc=new TextEncoder(),dec=new TextDecoder();
- const S={family:'ew-he',setup:false,authToken:'',key:null,data:null,revision:0,route:'home',saving:false,generation:0,savedGeneration:0,conflict:null,filter:'all',search:'',initialized:false,retryCount:0,backend:!!CONFIG.backendUrl};
+ const allowPaint=()=>new Promise(resolve=>setTimeout(resolve,0));
+ function authProgress(visible,message=''){
+   const bar=byId('authProgress');
+   if(!bar)return;
+   bar.classList.toggle('hidden',!visible);
+   bar.setAttribute('aria-hidden',visible?'false':'true');
+   if(message)byId('authProgressText').textContent=message;
+   byId('authScreen')?.classList.toggle('auth-loading',visible);
+ }
+ const S={family:'ew-he',setup:false,authToken:'',key:null,data:null,revision:0,route:'home',saving:false,generation:0,savedGeneration:0,conflict:null,filter:'all',sectionFilter:'all',search:'',initialized:false,retryCount:0,backend:!!CONFIG.backendUrl};
  let activePin='passwordInput';
  function paintPins(){
    [['passwordInput','pinPrimaryDisplay'],['passwordAgainInput','pinConfirmDisplay']].forEach(([inputId,displayId])=>{
@@ -173,13 +182,13 @@
  let metaRequestSeq=0;
  async function refreshMeta(){
    const seq=++metaRequestSeq,selectedFamily=S.family;
-   const mode=byId('authMode');mode.textContent='접속 상태 확인 중…';byId('authSubmit').disabled=true;resetPins(true);
+   const mode=byId('authMode');mode.textContent='가족 공간 확인 중…';byId('authSubmit').disabled=true;authProgress(true,'등록 상태를 확인하고 있습니다…');resetPins(true);
    try{const r=await Bridge.call({action:'meta',family:selectedFamily});if(seq!==metaRequestSeq)return;S.setup=!r.initialized;S.authSalt=r.salt;byId('inviteWrap').classList.toggle('hidden',!S.setup);byId('passwordAgainWrap').classList.toggle('hidden',!S.setup);byId('pinLabel').textContent=S.setup?'새 4자리 PIN 설정':'4자리 PIN 입력';byId('authSubmit').textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';mode.textContent=S.setup?'처음 입장합니다. 초대 코드를 입력하고 숫자 PIN을 두 번 설정하세요.':'등록된 가족 공간입니다. 숫자 PIN을 입력하세요.';paintPins();}
    catch(e){if(seq!==metaRequestSeq)return;mode.textContent='연결 오류: '+e.message;byId('authMessage').textContent='연결 상태를 확인한 뒤 다시 시도하세요.'}
-   finally{if(seq===metaRequestSeq)byId('authSubmit').disabled=false}
+   finally{if(seq===metaRequestSeq){byId('authSubmit').disabled=false;authProgress(false)}}
  }
  async function submitAuth(e){
-  e.preventDefault();const pass=byId('passwordInput').value,msg=byId('authMessage'),btn=byId('authSubmit');msg.textContent='';btn.disabled=true;btn.textContent='암호화 키 확인 중…';
+  e.preventDefault();const pass=byId('passwordInput').value,msg=byId('authMessage'),btn=byId('authSubmit');msg.textContent='';btn.disabled=true;btn.textContent='열고 있습니다…';authProgress(true,'암호화된 가족 기록을 여는 중…');await allowPaint();
   try{
    if(S.setup){
      if(!/^\d{4}$/.test(pass))throw Error('PIN은 숫자 4자리여야 합니다.');
@@ -187,12 +196,12 @@
      if(!byId('inviteInput').value.trim())throw Error('초대 코드는 필수입니다.');
      const salt=b64(rand(16)),derived=await derive(pass,salt);S.key=derived.key;S.authToken=derived.authToken;S.data=S.family==='hr-yw'?babyPrepToddlerData():babyPrepInitialData();
      const cipher=await encryptPayload(S.data);
-     const r=await Bridge.call({action:'setup',family:S.family,inviteCode:byId('inviteInput').value.trim(),salt,verifier:derived.verifier,cipher});
+     authProgress(true,'가족 공간을 서버에 등록하고 있습니다…');const r=await Bridge.call({action:'setup',family:S.family,inviteCode:byId('inviteInput').value.trim(),salt,verifier:derived.verifier,cipher});
      if(!r.ok)throw Error(r.error||'최초 등록 실패');S.revision=r.revision||1;S.authSalt=salt;S.generation=0;S.savedGeneration=0;
      storageSet(cacheKey(),{cipher,revision:S.revision,pending:false});toast('가족 공간이 준비되었습니다.');
    } else {
      const derived=await derive(pass,S.authSalt);S.key=derived.key;S.authToken=derived.authToken;
-     const r=await Bridge.call({action:'login',family:S.family,authToken:derived.authToken});
+     authProgress(true,'서버에서 암호화 기록을 불러오는 중…');const r=await Bridge.call({action:'login',family:S.family,authToken:derived.authToken});
      if(!r.ok)throw Error(r.error||'로그인 실패');
      S.revision=r.revision;S.data=await decryptPayload(r.cipher);
      const cache=storageGet(cacheKey());
@@ -209,7 +218,7 @@
    labelStatus(S.backend?'🔐 암호화 동기화 연결됨':'⚠ 이 기기에만 암호화 저장',S.backend?'saved':'error');render();
    if(S.generation>S.savedGeneration)queueSave();
   }catch(err){S.key=null;S.authToken='';S.data=null;resetPins();msg.textContent=err.message||'잠금 해제 실패';}
-  finally{btn.disabled=false;btn.textContent=S.setup?'PIN 설정 후 시작':'잠금 해제'}
+  finally{btn.disabled=false;btn.textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';authProgress(false)}
  }
  let saveTimer=null;
  function markDirty(){S.retryCount=0;S.generation++;labelStatus('● 변경 사항 저장 대기','');queueSave();render()}
@@ -263,9 +272,15 @@
    return {items,done,spent,needed,missing,total:spent+needed};
  }
  function alertItems(){return activeItems().filter(i=>!doneNow(i)&&i.status!=='skipped'&&dueOf(i)&&daysUntil(dueOf(i))<=14).sort((a,b)=>dueOf(a).localeCompare(dueOf(b)))}
- function render(){if(!S.data)return;renderTabs();renderNav();const route=S.route;let html='';if(route==='home')html=renderHome();else if(route==='all'||route.startsWith('section:'))html=renderList(route);else if(route==='timeline')html=renderTimeline();else if(route==='budget')html=renderBudget();else if(route==='reco')html=renderReco();else if(route==='settings')html=renderSettings();byId('mainContent').innerHTML=`<div class="screen">${html}</div>`;}
- function renderTabs(){const tabs=[['home','홈'],['all','전체 체크'],['timeline','일정'],['budget','비용'],['reco','제품 참고'],...S.data.sections.map(x=>['section:'+x,x]),['settings','설정']];byId('topTabs').innerHTML=tabs.map(([route,title])=>`<button type="button" data-action="route" data-route="${escape(route)}" class="tab ${S.route===route?'active':''}">${escape(title)}</button>`).join('')}
- function renderNav(){const tabs=[['home','⌂','홈'],['all','☑','체크'],['timeline','▤','일정'],['budget','₩','비용']];byId('bottomNav').innerHTML=tabs.map(([route,icon,label])=>`<button class="nav-btn ${S.route===route?'active':''}" data-action="route" data-route="${route}"><span>${icon}</span>${label}</button>`).join('')}
+ function renderHeaderProgress(){
+   const el=byId('headerProgress');
+   if(!el||!S.data)return;
+   const all=activeItems(),done=all.filter(doneNow).length,percentage=all.length?Math.round(done*100/all.length):0;
+   el.innerHTML=`<div class="header-progress-label"><strong>준비 진행률 ${percentage}%</strong><span>${done} / ${all.length} 완료</span></div><div class="progress-track compact" role="progressbar" aria-label="준비 완료율" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percentage}"><div style="width:${percentage}%"></div></div>`;
+ }
+ function render(){if(!S.data)return;renderHeaderProgress();renderTabs();renderNav();const route=S.route;let html='';if(route==='home')html=renderHome();else if(route==='all'||route.startsWith('section:'))html=renderList(route);else if(route==='timeline')html=renderTimeline();else if(route==='budget')html=renderBudget();else if(route==='reco')html=renderReco();else if(route==='settings')html=renderSettings();byId('mainContent').innerHTML=`<div class="screen">${html}</div>`;}
+ function renderTabs(){const tabs=[['home','홈'],['all','체크'],['timeline','일정'],['settings','설정']];const active=S.route==='budget'?'home':S.route==='reco'?'settings':S.route.startsWith('section:')?'all':S.route;byId('topTabs').innerHTML=tabs.map(([route,title])=>`<button type="button" data-action="route" data-route="${route}" class="tab ${active===route?'active':''}" aria-current="${active===route?'page':'false'}">${title}</button>`).join('')}
+ function renderNav(){const tabs=[['home','⌂','홈'],['all','☑','체크'],['timeline','▤','일정'],['settings','⚙','설정']];const active=S.route==='budget'?'home':S.route==='reco'?'settings':S.route.startsWith('section:')?'all':S.route;byId('bottomNav').innerHTML=tabs.map(([route,icon,label])=>`<button type="button" class="nav-btn ${active===route?'active':''}" data-action="route" data-route="${route}"><span>${icon}</span>${label}</button>`).join('')}
  function renderHome(){const B=budget(),pct=B.items.length?Math.round(100*B.done/B.items.length):0,due=S.data.settings.dueDate,diff=daysUntil(due),alerts=alertItems(),toddler=isToddler();
    const heroTitle=toddler?'육아 준비 로드맵':'출산 준비 현황';
    const label=toddler?`${escape(S.data.settings.babyName||'우리 아이')} · ${due?'생후 '+Math.max(0,-diff)+'일':'설정에서 출생일을 등록하세요'}`:(due?`출산예정일 ${escape(due)}`:'먼저 출산예정일을 등록하세요');

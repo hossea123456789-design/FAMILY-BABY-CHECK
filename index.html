@@ -7,7 +7,7 @@
   <meta name="description" content="부부가 함께 쓰는 임신·출산 준비 체크리스트" />
   <title>우리 가족 체크노트</title>
   <meta name="application-name" content="우리 가족 체크노트" />
-  <link rel="stylesheet" href="style.css?v=1.1.2" />
+  <link rel="stylesheet" href="style.css?v=1.2.0" />
 
   <style id="pin-keypad-critical">
     .auth-card .pin-display{display:flex;align-items:center;justify-content:center;gap:20px;width:min(100%,320px);min-height:64px;margin:0 auto;border:1px solid #dce5f4;border-radius:18px;padding:12px 16px;background:#f5f8ff;cursor:pointer}
@@ -35,6 +35,7 @@
         <button type="button" class="family-choice" data-family="hr-yw" aria-pressed="false">💚<strong>하람 &amp; 예원</strong><span>24~36개월 준비·예산</span></button>
       </div>
       <p id="authMode" class="status-line">접속 상태 확인 중…</p>
+      <div id="authProgress" class="auth-progress" role="status" aria-live="polite"><div class="auth-progress-track"><span></span></div><p id="authProgressText">가족 공간에 연결하는 중…</p></div>
       <form id="authForm" class="stack">
         <label id="inviteWrap" class="field hidden">최초 등록 초대 코드<input id="inviteInput" type="text" autocomplete="one-time-code" placeholder="전달받은 초대 코드" /></label>
         <div class="field"><span id="pinLabel">4자리 숫자 PIN</span>
@@ -70,6 +71,7 @@
     <header class="app-header">
       <div class="header-top"><div><span class="eyebrow" id="familyTitle">우리 가족</span><h1>우리 가족 체크노트</h1></div><button id="lockBtn" class="ghost" title="잠금">🔒 잠금</button></div>
       <div class="save-row"><span id="syncStatus" class="sync-status">준비 중</span><button id="syncNowBtn" class="link-button">↻ 동기화</button></div>
+      <div id="headerProgress" class="header-progress" aria-live="polite"></div>
       <nav id="topTabs" class="tabs" aria-label="주요 메뉴"></nav>
     </header>
     <main id="mainContent"></main>
@@ -80,5 +82,5 @@
 <footer class="policy-footer" style="max-width:620px;margin:0 auto;padding:10px 18px 108px;text-align:center;font-size:12px;color:#667389"><a href="./privacy.html" style="color:#667389">개인정보처리방침</a> · <a href="./terms.html" style="color:#667389">이용약관</a></footer>
 <div id="toast" class="toast" aria-live="polite"></div>
 <iframe id="apiFrame" title="암호화 데이터 전송" class="api-frame" referrerpolicy="no-referrer"></iframe>
-<script src="config.js?v=1.1.4"></script><script src="seed.js?v=1.1.2"></script><script src="toddler-seed.js?v=1.1.2"></script><script src="recommendations.js?v=1.1.2"></script><script src="app.js?v=1.1.4"></script>
+<script src="config.js?v=1.2.0"></script><script src="seed.js?v=1.1.2"></script><script src="toddler-seed.js?v=1.1.2"></script><script src="recommendations.js?v=1.1.2"></script><script src="app.js?v=1.2.0"></script>
 </body></html>

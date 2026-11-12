@@ -18,3 +18,18 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 .auth-card .pin-display{max-width:320px;margin-inline:auto}
 .auth-card .pin-keypad{width:min(100%,320px);max-width:320px}
 .auth-card .pin-key{display:flex;align-items:center;justify-content:center}
+
+/* v1.2.0: initial login progress and persistent checklist completion */
+.auth-progress{margin:2px 0 14px;padding:9px 2px 0}
+.auth-progress-track{height:5px;border-radius:9px;overflow:hidden;background:#e4edff;position:relative}
+.auth-progress-track>span{position:absolute;left:0;top:0;height:100%;width:35%;border-radius:9px;background:var(--blue);animation:auth-loading-track 1.05s ease-in-out infinite}
+.auth-progress p{font-size:12px;color:#47618b;margin:8px 0 0;text-align:center}
+@keyframes auth-loading-track{0%{left:-35%}100%{left:100%}}
+.auth-loading .pin-keypad{opacity:.55;pointer-events:none}
+.header-progress{padding:0 0 7px}
+.header-progress-label{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#65748a}
+.header-progress-label strong{font-size:12px;color:var(--blue)}
+.header-progress .progress-track.compact{height:6px;margin:6px 0 1px}
+@media(prefers-reduced-motion:reduce){.auth-progress-track>span{animation:none;width:100%}}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}
+.tabs .tab{min-width:0;text-align:center;padding:9px 5px}
