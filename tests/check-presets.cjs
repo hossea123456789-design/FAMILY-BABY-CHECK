@@ -140,6 +140,7 @@ hooks.S.data.settings.residenceRegion='other';
 assert(!hooks.benefitStats().relevant.some(x=>x.id==='seoul-grandparent'),'지역 변경 시 노출만 바뀜');
 assert.equal(hooks.benefitState('seoul-grandparent'),'review','지역 변경이 과거 완료 기록을 삭제하지 않음');
 
+hooks.saveBenefitStatus('seoul-grandparent','pending'); // 먼저 기존 review 상태를 초기화해 신규 미확인 카드 렌더링을 검증
 const firstCard=hooks.benefitCard(g,givenSeoul);
 assert(firstCard.includes('내 진행 상태')&&firstCard.includes('benefit-status-select'),'상태는 단일 선택 입력으로 표시');
 assert(firstCard.includes('value="pending" selected'),'신규 혜택은 미확인이 선택된 상태');
