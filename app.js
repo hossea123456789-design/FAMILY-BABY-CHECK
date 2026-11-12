@@ -687,14 +687,14 @@
    return `<div class="item-recommendation ${age.ready?'ready':'future'}"><span>${(rec.candidates||[]).length?'추천 후보':'구매 기준'}</span><strong>${escape(recommendation)}</strong><em>${escape(age.label)}</em><button type="button" class="item-reco-button" data-action="recommend-item" data-id="${escape(item.id)}" aria-label="${escape(item.title)} ${(rec.candidates||[]).length?'제품 비교':'선택 기준'} 보기">${(rec.candidates||[]).length?'제품 비교':'선택 기준'} ↗</button></div>`;
  }
  function recommendationOverview(){
-   const covered=activeItems().filter(i=>canRecommendProduct(i)&&recommendFor(i));
+   const covered=activeItems().filter(i=>canRecommendProduct(i)&&recommendFor(i)?.candidates?.length);
    const now=covered.filter(i=>recommendationAge(recommendFor(i)).ready);
    const later=covered.length-now.length;
    const hasBirthday=!!S.data.settings.dueDate;
    return `<div class="reco-overview"><div><strong>🛒 ${isToddler()?'아이 월령에 맞춘':'출산 준비'} 구매 후보</strong><p>${isToddler()&&!hasBirthday?'출생일을 설정하면 월령별 추천 시기가 표시됩니다.':`지금 검토 ${now.length}개 · 이후 단계 ${later}개`} · 보유 중이면 제외</p></div><button type="button" class="mini-btn" data-action="route" data-route="reco">후보 전체</button></div>`;
  }
  function renderReco(){
-   const R=catalog(),entries=productRecommendations().filter(e=>e.stage===(isToddler()?'toddler':'newborn'));
+   const R=catalog(),entries=productRecommendations().filter(e=>e.stage===(isToddler()?'toddler':'newborn')).sort((a,b)=>(Number(recommendationAge(b).ready)-Number(recommendationAge(a).ready))||a.minMonths-b.minMonths);
    const rows=entries.map(rec=>{
      const age=recommendationAge(rec),target=activeItems().find(i=>recommendFor(i)?.id===rec.id);
      const goods=(R.curatedGoods||[]).find(x=>x.recId===rec.id);
