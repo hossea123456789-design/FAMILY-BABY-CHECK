@@ -35,7 +35,7 @@
 ## GitHub 코드 / Sheets 데이터 상태
 
 - 앱 프런트: https://hossea123456789-design.github.io/FAMILY-BABY-CHECK/
-- 전용 DB: https://docs.google.com/spreadsheets/d/1RMztoEM_ClfZDC9DxItbla1wc-cwzx7xXIXGKK5tVLU/edit
+- 전용 DB: Google Drive에서 '우리 가족 체크노트_DB_암호문 전용' 검색
 - 최소 스코프: `apps-script/appsscript.json` (Google Sheets 접근만 선언)
 - **주의:** `SpreadsheetApp.openById()`는 전체 spreadsheets scope를 요구합니다. 웹앱 실행에서 `getActiveSpreadsheet()`는 동작하지 않을 수 있으므로 단순히 `spreadsheets.currentonly`로 바꾸면 서버 동작이 깨질 수 있습니다.
 - 정책 페이지: https://hossea123456789-design.github.io/FAMILY-BABY-CHECK/privacy.html , https://hossea123456789-design.github.io/FAMILY-BABY-CHECK/terms.html

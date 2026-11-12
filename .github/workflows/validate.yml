@@ -24,6 +24,7 @@ jobs:
           node --check seed.js
           node --check toddler-seed.js
           node --check recommendations.js
+          node --check benefits.js
       - name: Apps Script server syntax check
         run: |
           cp apps-script/Code.gs /tmp/family-baby-Code.js
