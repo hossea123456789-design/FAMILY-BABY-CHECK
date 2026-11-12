@@ -316,6 +316,7 @@
    labelStatus(S.openedFromCache&&S.backend?'기기 기록을 열었습니다 · 서버 확인 중':S.backend?'✓ 서버 기록 불러오기 완료':'✓ 이 기기 기록 확인',S.openedFromCache&&S.backend?'cached':S.backend?'loaded':'saved');render();
    if(S.generation>S.savedGeneration)queueSave();
    if(S.openedFromCache&&S.backend)void refreshFromServer(true);
+   else if(S.generation===S.savedGeneration&&reconcileToddlerCatalog())markDirty();
    S.openedFromCache=false;
   }catch(err){S.key=null;S.authToken='';S.data=null;resetPins();msg.textContent=err.message||'잠금 해제 실패';}
   finally{btn.disabled=false;btn.textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';authProgress(false)}
@@ -356,6 +357,7 @@
        S.revision=r.revision;storageSet(cacheKey(),{cipher:r.cipher,revision:r.revision,salt:S.authSalt,pending:false});
        render();if(!quiet)toast('다른 기기에서 수정한 내역을 반영했습니다.');
      }else if(!quiet)toast('최신 상태입니다.');
+     if(!stale()&&reconcileToddlerCatalog()){markDirty();return}
      labelStatus('✓ 서버 최신 기록 확인 완료','loaded');
    }catch(e){
      if(S.family!==startedFamily||S.authToken!==startedToken||!S.data)return;
@@ -409,7 +411,40 @@
      }
    }catch(e){toast(e.message)}
  }
- function activeItems(){return S.data.items.filter(i=>!i.deleted)}
+ // Only pristine built-in placeholders are retired. User-edited/completed/costed items remain intact.
+ const catalog=()=>BABY_PREP_RECOMMENDATIONS;
+ const productRecommendations=()=>catalog().categories||[];
+ const retiredSeedTitles=()=>new Set(catalog().retiredTitles||[]);
+ function isPristineLegacyItem(i){
+   return /^toddler-(?:roadmap|goods)-/.test(String(i.id||''))&&
+     (i.updatedAt===0||!i.updatedAt)&&i.status==='pending'&&!i.deleted&&
+     !i.product&&!i.giver&&!i.referenceUrl&&!(Number(i.actual)>0)&&!(Number(i.estimate)>0)&&
+     (i.acquisition==='undecided'||!i.acquisition)&&!i.lastDoneDate;
+ }
+ function isRetiredPristine(i){return isToddler()&&retiredSeedTitles().has(i.title)&&isPristineLegacyItem(i)}
+ function buildCuratedItem(entry){
+   return {id:'curated-'+entry.id,title:entry.title,section:entry.section,type:'item',
+     status:'pending',acquisition:'undecided',quantity:1,estimate:0,actual:0,referencePrice:0,referenceUrl:'',
+     product:'',giver:'',owner:'함께',priority:'normal',dueMonth:entry.month,dueOffset:null,dueDate:'',
+     repeat:'none',lastDoneDate:'',notes:entry.notes||'',recommendationId:entry.recId,updatedAt:0,deleted:false};
+ }
+ function reconcileToddlerCatalog(){
+   if(!S.data||!isToddler()||!Array.isArray(S.data.items))return false;
+   let changed=false;
+   for(const item of S.data.items){
+     if(isRetiredPristine(item)){item.deleted=true;item.updatedAt=stamp();changed=true}
+   }
+   for(const recommended of catalog().curatedGoods||[]){
+     const id='curated-'+recommended.id;
+     if(S.data.items.some(i=>i.id===id||i.title===recommended.title||i.recommendationId===recommended.recId))continue;
+     if(!S.data.sections.includes(recommended.section))continue;
+     S.data.items.push(buildCuratedItem(recommended));changed=true;
+   }
+   if(changed)S.data.seedVersion=BABY_PREP_TODDLER_SEED_VERSION;
+   return changed;
+ }
+ function activeItems(){return S.data.items.filter(i=>!i.deleted&&!isRetiredPristine(i))}
+
  function budget(){
    const items=activeItems(),done=items.filter(doneNow).length;
    const spent=items.reduce((n,i)=>n+(Number(i.actual)||0),0);
