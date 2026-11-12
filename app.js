@@ -5,6 +5,24 @@
  const byId=id=>document.getElementById(id);
  const CONFIG=window.BABY_PREP_CONFIG||{};
  const FAMILY={'ew-he':'은원 & 하은','ce-hy':'채은 & 하영','hr-yw':'하람 & 예원'};
+ const LAST_FAMILY_KEY='baby-prep-last-selected-family-v1';
+ // 가족 선택은 현재 기기에만 기억합니다. PIN/초대 코드/인증 정보는 저장하지 않습니다.
+ function readPreferredFamily(){
+   try{
+     const value=localStorage.getItem(LAST_FAMILY_KEY);
+     return Object.prototype.hasOwnProperty.call(FAMILY,value)?value:'ew-he';
+   }catch{return 'ew-he'}
+ }
+ function selectFamily(family,remember=false){
+   if(!Object.prototype.hasOwnProperty.call(FAMILY,family))return;
+   S.family=family;
+   document.querySelectorAll('.family-choice').forEach(button=>{
+     const selected=button.dataset.family===family;
+     button.classList.toggle('active',selected);
+     button.setAttribute('aria-pressed',String(selected));
+   });
+   if(remember){try{localStorage.setItem(LAST_FAMILY_KEY,family)}catch{/* private mode에서도 선택은 유지 */}}
+ }
  const enc=new TextEncoder(),dec=new TextDecoder();
  const S={family:'ew-he',setup:false,authToken:'',key:null,data:null,revision:0,route:'home',saving:false,generation:0,savedGeneration:0,conflict:null,filter:'all',search:'',initialized:false,retryCount:0,backend:!!CONFIG.backendUrl};
  let activePin='passwordInput';
@@ -331,7 +349,7 @@
     if(/^\d$/.test(e.key)){e.preventDefault();pinPress(e.key)}
     else if(e.key==='Backspace'){e.preventDefault();pinPress('delete')}
   });
-  document.addEventListener('click',clickAction);document.addEventListener('submit',submitAction);byId('familyGrid').addEventListener('click',e=>{const b=e.target.closest('[data-family]');if(!b)return;S.family=b.dataset.family;document.querySelectorAll('.family-choice').forEach(x=>x.classList.toggle('active',x===b));refreshMeta()});byId('listSearch')?.addEventListener('input',()=>{});
+  document.addEventListener('click',clickAction);document.addEventListener('submit',submitAction);byId('familyGrid').addEventListener('click',e=>{const b=e.target.closest('[data-family]');if(!b)return;selectFamily(b.dataset.family,true);refreshMeta()});byId('listSearch')?.addEventListener('input',()=>{});
    document.addEventListener('input',e=>{if(e.target.id==='listSearch'){S.search=e.target.value;const focus=e.target.selectionStart;render();const el=byId('listSearch');el?.focus();el?.setSelectionRange(focus,focus)}});
    document.addEventListener('change',e=>{if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
    byId('modalClose').addEventListener('click',closeModal);byId('modal').addEventListener('click',e=>{if(e.target===byId('modal')&&!S.conflict)closeModal()});
@@ -339,6 +357,6 @@
    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.data&&S.generation===S.savedGeneration&&S.backend&&!S.conflict)refreshFromServer()});
    window.addEventListener('beforeunload',e=>{if(S.data&&S.generation>S.savedGeneration){e.preventDefault();e.returnValue=''}});
  }
- async function init(){if(!window.crypto?.subtle){byId('authMessage').textContent='안전한 연결(HTTPS)에서 열어주세요. file:// 대신 로컬 서버 또는 GitHub Pages를 사용하세요.';return}bind();Bridge.start();await refreshMeta()}
+ async function init(){if(!window.crypto?.subtle){byId('authMessage').textContent='안전한 연결(HTTPS)에서 열어주세요. file:// 대신 로컬 서버 또는 GitHub Pages를 사용하세요.';return}selectFamily(readPreferredFamily());bind();Bridge.start();await refreshMeta()}
  init();
 })();
