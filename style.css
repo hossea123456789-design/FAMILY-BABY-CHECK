@@ -130,3 +130,7 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 @keyframes mini-sync-moving{from{left:-50%}to{left:120%}}
 @media(prefers-reduced-motion:reduce){.sync-mini[data-state="loading"] .sync-mini-track>span{animation:none;width:100%;left:0}}
 @media(max-width:345px){.sync-mini{width:70px}.header-controls{gap:5px}.header-top h1{font-size:16px}.header-lock{min-width:34px}}
+
+/* Successful read ≠ successful save: separate blue loaded vs green saved. */
+.sync-mini[data-state="loaded"] .sync-mini-activity{color:#326db2}
+.sync-mini[data-state="loaded"] .sync-mini-track>span{background:#5495d6;transform:none}
