@@ -38,6 +38,14 @@ jobs:
       - name: Verify nonce-qualified Apps Script bridge
         run: |
           curl --location --fail --silent --show-error --max-time 30 "${BACKEND_URL}?bridge_nonce=AAAAAAAAAAAAAAAAAAAAAA%3D%3D" > /tmp/bridge.html
-          grep -Fq 'BABY_PREP_BRIDGE_READY' /tmp/bridge.html
-          grep -Fq 'https://hossea123456789-design.github.io' /tmp/bridge.html
+          if ! grep -Fq 'BABY_PREP_BRIDGE_READY' /tmp/bridge.html; then
+            echo "BRIDGE_READY missing. Received HTML snippet:"
+            head -c 1300 /tmp/bridge.html
+            exit 1
+          fi
+          if ! grep -Fq 'https://hossea123456789-design.github.io' /tmp/bridge.html; then
+            echo "Allowed origin missing. Received HTML snippet:"
+            head -c 1300 /tmp/bridge.html
+            exit 1
+          fi
           echo "Bridge HTML and allowed origin returned successfully."
