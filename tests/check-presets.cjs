@@ -93,7 +93,7 @@ assert.equal((ui.topTabs.innerHTML.match(/data-route=/g)||[]).length,4,'상단 �
 assert(!source.includes('getElementById(\'bottomNav\')'),'하단 내비게이션 렌더링 없음');
 const homepage=hooks.renderHome();
 assert(!homepage.includes('role="progressbar"'),'홈에서는 체크 완료율을 노출하지 않음');
-assert(homepage.includes('다가오는 일정')&&homepage.includes('가족 혜택'),'홈은 현재 할 일 우선');
+assert(homepage.includes('곧 확인할 일')&&homepage.includes('가족 혜택'),'홈은 예정된 일과 혜택을 우선 표시');
 assert(hooks.renderChecklistProgress().includes('role="progressbar"'),'완료율은 체크리스트에서만 제공');
 const probe=roadmap.items.find(item=>item.type==='task');
 hooks.openEditor(probe.id);
