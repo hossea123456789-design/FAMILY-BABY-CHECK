@@ -204,3 +204,8 @@ body.modal-open{overflow:hidden!important;overscroll-behavior:none}
 .reco-choice .form-actions>button:disabled{opacity:.55;background:#eef1f5;color:#647086;cursor:not-allowed}
 .reco-open-link{display:grid;place-items:center;text-decoration:none}
 @media(max-width:370px){.reco-overview{flex-direction:column;align-items:stretch}.reco-overview button{align-self:flex-end}.item-recommendation>em{margin-left:0}}
+
+/* v1.4.1: direct compare action inside purchase rows */
+.item-reco-button{border:1px solid #b9d1f2;background:#fff;color:#2a60a5;border-radius:8px;padding:5px 9px;font-size:10px;font-weight:780;line-height:1.4;white-space:nowrap}
+.item-reco-button:focus-visible{outline:2px solid #477fe0;outline-offset:2px}
+.item-recommendation.future .item-reco-button{border-color:#dce2ec;color:#75839a}

@@ -5,10 +5,27 @@
 
 관련: [README](./README.md) · [CHANGELOG](./CHANGELOG.md) · [OAuth 해결](./GOOGLE_OAUTH_FIX.md) · [AGENTS 지침](./AGENTS.md) · [GitHub 공통 인수인계 규칙](./GITHUB_HANDOFF_STANDARD.md)
 
+## 최신 v1.4.1 — 실제 구매 후보 선탑재, 월령별 리스트 및 무의미한 항목 정리 (2026-11-12)
+
+**이번 요청과 해결:** '구매 품목에는 실제 추천이 하나도 없음' / '처음부터 나이 맞는 추천 품목을 리스트에 넣어 달라' / '친척에게 받을 물품·중고 물품 목록 정리 같은 불필요한 내용 제거'. 구형 앱의 `recommendations.js`는 팁 문장과 과거 구매 참조링크 위주여서 **모델 추천이라고 보기 어려웠음**.
+
+**현 구현:**
+- `recommendations.js`에 한국에서 실제 확인 가능한 제품명, 최소 권장 월령, 연령 설명, 추천 근거, 공홈/판매 링크를 **공개 정적 카탈로그**로 관리. 2026-11-12 확인 기준이며 실시간 판매/재고 API는 없음. 특정 링크가 오래되거나 품절이면 갱신 필요.
+- **유아 추천 예시:** 레고 듀플로 나의 첫 자동차 10474(18개월+; 제조사 공식), 나의 첫 동물 기차 10412(18개월+), 3in1 건설 차량 10475(24개월+), 한림출판사 달님 안녕 보드북 세트, 핑크퐁 동물 판퍼즐, 뉴발란스 키즈 740 토들러 신발(사이즈 실측), 유아 전자시계는 버튼전지 접근 등 안전상 검증된 개별 모델이 없어 **기준만 공개**. 자석 블록은 **36개월 이후 항목**으로 따로 유지하며 36개월 미만 즉시 추천 금지.
+- **신생아 후보:** 필립스 아벤트 PPSU 125ml SCY940/01(0~3개월), 울트라 에어 SCF545/10(0~6개월), LG 퓨리케어 HW500DAS(세척/차일드락), 브라운 써모스캔7 IRT6520, 휴비딕 HT-20 등. 수유방식·체중·월령/측정방법이 우선이며 단순 브랜드 순위 아님.
+- **UX:** 모든 실물 물품 중 추천 매칭이 있는 항목은 체크리스트에서 곧바로 **제품명·현재 적합/향후 개월수·제품 비교 버튼** 표시. 버튼 → 공식 링크/제품 이유/권장 월령 → '이 후보로 선택'을 누르면 `item.product`와 `referenceUrl`만 저장. 기존 제품명이 있으면 변경 확인을 요구. `status`, `actual`, `estimate`, `quantity`, `done`은 자동 변경하지 않음. 구매 상세 화면은 3세 이상 모델을 20개월 아이에게 선택 불가.
+- **프리셋 정리:** 하람·예원 구형 22일정+10상품=32에서 신규 템플릿은 **16 일정+11 구매 후보=27**로 정리. 불필요한 추상 업무 및 친척 중고 목록 정리를 제거. 7개 구체 구매 후보를 새 시드에 포함했고 이는 **구매 필수가 아니라 선택항목**.
+- **기존 저장 자료:** `reconcileToddlerCatalog()`는 구형 `toddler-roadmap-*`/`toddler-goods-*` 기본 항목 중 `updatedAt=0`, status=pending, 제품명/지출/수정 없는 것만 `deleted:true`로 숨김. 사용자가 상태·금액·상품·수령인 등을 변경한 항목은 보존. `curated-[id]`가 있는 경우 또는 같은 상품명이 이미 존재하면 재추가 안 함. 변경은 서버 최신본 확인 후 `markDirty()`로 암호화 동기화 예약. 저장이 끝나지 않았다고 완료로 선언하지 않음.
+- **기타 가족:** 신생아 두 계정의 90개 준비/일정은 삭제하지 않고 핵심 품목에 추천을 연결.
+- **테스트:** 구문검사 및 프리셋 27/90, 실제 상품 공식 URL, 20개월 대 36개월 사용 기준, 초기 기록 정리와 사용자 작성값 보존, 중복 방지, 추천 링크 렌더링 자동 테스트. **실제 Android 화면/실제 두 기기 DB 동기화는 아직 미검증**.
+- **작업 유의:** 모델·재고·가격은 실시간 검증하지 않으므로 최신 상품으로 갱신 시 관련 공식 링크 확인. 사용자의 실제 구매 내역에 임의 모델·가격을 자동 기록하지 않음. `apps-script/Code.gs`는 이번에 변경하지 않음.
+- **변경 파일:** `recommendations.js`, `toddler-seed.js`, `app.js`, `style.css`, `index.html`, `config.js`, `tests/check-presets.cjs`, `README.md`, `CHANGELOG.md`, 본 인수인계.
+- **확인한 공식 자료:** https://www.lego.com/ko-kr/product/creative-vehicles-10474 / https://www.lego.com/ko-kr/product/animal-train-10412 / https://www.lego.com/ko-kr/product/3-in-1-construction-vehicles-10475 / https://www.philips.co.kr/c-p/SCY940_01/natural-response-ppsu-baby-bottle / https://www.philips.co.kr/c-p/SCF545_10/ultra-air-pacifier / https://www.lge.co.kr/humidifiers/hw500das-akor1 / https://www.yes24.com/Product/Goods/4415176.
+
 ## 1. 최종 목표와 사용자가 확정한 사항
 
 - 세 가족의 출산·육아 준비물, 신청할 복지혜택, 미래 일정, 구매·예산을 관리하는 **별도 모바일 웹앱**. GitHub Pages 공개 앱, Google Apps Script + 암호문 전용 Google Sheets DB 구성.
-- `ew-he` 은원·하은 / `ce-hy` 채은·하영: 출산용품 76개 + 예정·할 일 14개, 각각 초기 미완료. `hr-yw` 하람·예원: 24~36개월 준비 일정 22개 + 구매 검토 10개, 최초 32개.
+- `ew-he` 은원·하은 / `ce-hy` 채은·하영: 출산용품 76개 + 예정·할 일 14개, 각 90개 유지. `hr-yw` 하람·예원: **현재 신규 프리셋 16개 실제 일정 + 11개 구매 검토 = 27개** (v1.3.2까지는 초기 32개였으며 기존 사용자의 사용자 작성 기록은 보존).
 - 하람·예원 가족은 이미 '유하 육아 도구 모음'이 있으므로, 일상 수면/양치/식사/발달 기록과 **중복하지 않기**. 초안의 반복 루틴 17개를 제거. 이 프로젝트는 계획/구매/행정/예산/혜택 중심.
 - 원본 사용자 재무 워크북의 '육아 관련 체크리스트'만 참고. 원본 재무 다른 탭, 기존 개인정보, 구매 상태, 실제 지출액은 새 가족 공간에 이관하지 않음. 예전 참고 가격은 자동 예산 합산하지 않음.
 - 계정 로그인은 **4자리 숫자 PIN 패드**. 가족 내부에서 서로의 기록을 존중하는 간편 잠금 장치이며, 기존에 검토한 12자리 비밀번호와 필수 복구키는 사용자 요청에 따라 적용하지 않음. 최초 등록에 가족별 8자리 초대 코드 필요. PIN은 브라우저 키 생성에 사용되지만, 1만 가지 조합이라 암호문 유출 시 대입 공격에 취약함을 명시.
@@ -35,7 +52,7 @@ Google Sheets 소유자 전용 "우리 가족 체크노트_DB_암호문 전용"
 ```
 
 - **앱 URL:** https://hossea123456789-design.github.io/FAMILY-BABY-CHECK/
-- **프런트 버전:** `1.3.2` (`index.html`의 CSS/JS 캐시 쿼리와 `config.js`).
+- **프런트 버전:** `1.4.1` (`index.html`의 CSS/JS 캐시 쿼리와 `config.js`).
 - **GAS 공개 엔드포인트:** https://script.google.com/macros/s/AKfycbxEqsoeEzlHfME5CE7SUa-XjZQ4G7UspNM9wLXsIQcPXvLTyheeuELTPR7T3Pinb6sl/exec
 - **GAS 배포:** GitHub 서버 파일을 고쳐도 실제 Google Apps Script 코드와 배포는 자동 변경되지 않음. `apps-script/Bridge.html`은 이전 분리형 참고 파일; 현재 `Code.gs` 내 `BRIDGE_DOCUMENT` 사용. 데이터 스키마를 바꿀 때는 기존 암호문과 충돌 없는지 검증할 것.
 - **전용 DB는 다른 금융 시트에서 완전히 분리.** Google Sheets ID를 공개 문서에 추가하지 말 것. 문서 제목으로 Drive에서 찾아야 함.
