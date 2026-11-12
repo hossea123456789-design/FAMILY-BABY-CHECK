@@ -17,7 +17,7 @@ vm.createContext(ctx);
 for(const f of ['seed.js','toddler-seed.js','benefits.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
 const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
 assert(source.includes(' init();\n})();'),'앱 시작 진입점을 찾지 못했습니다. 테스트 스크립트를 확인하세요.');
-vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus};\n})();'),ctx);
+vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,openEditor,cleanData,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus,refreshMeta,submitAuth,derive,encryptPayload,storageSet,cacheKey,refreshFromServer,Bridge};\n})();'),ctx);
 const newborn=vm.runInContext('babyPrepInitialData()',ctx);
 const roadmap=vm.runInContext('babyPrepToddlerData()',ctx);
 const hooks=ctx.__testHooks;
@@ -160,3 +160,48 @@ assert(view.includes('가족 혜택')&&view.includes('공식 안내'),'혜택 �
 console.log('PASS: 25 benefits, national + Seoul + Gyeonggi, age/stage/area gates, month-start deadline, safe legacy migration');
 console.log('PASS: top-only navigation, checklist-only progress, task-first home, compact editing');
 console.log('PASS: newborn 90, toddler 32, month dates, cost, per-device family selection and recovery');
+
+async function testInstantLocalUnlock(){
+  // Derive the same AES-GCM key used in production without weakening PBKDF2.
+  const fixedSalt=Buffer.from('0123456789abcdef').toString('base64');
+  const pin='5731';
+  const derived=await hooks.derive(pin,fixedSalt);
+  hooks.S.family='hr-yw';hooks.S.data=roadmap;hooks.S.key=derived.key;hooks.S.authToken=derived.authToken;
+  const encrypted=await hooks.encryptPayload(hooks.S.data);
+  const cacheKey=hooks.cacheKey();
+  local.set(cacheKey,JSON.stringify({cipher:encrypted,revision:8,salt:fixedSalt,pending:false}));
+  hooks.S.data=null;hooks.S.key=null;hooks.S.authToken='';hooks.S.revision=0;hooks.S.backend=true;hooks.S.generation=0;hooks.S.savedGeneration=0;hooks.S.setup=false;
+  const classSet=()=>{const values=new Set();return {add:x=>values.add(x),remove:x=>values.delete(x),contains:x=>values.has(x),toggle:(x,on)=>{on?values.add(x):values.delete(x)}}};
+  const nodes={...ui};
+  for(const id of ['authScreen','mainScreen','authSubmit','authMode','authMessage','inviteWrap','passwordAgainWrap','pinLabel','pinPrimaryDisplay','pinConfirmDisplay','authProgress','authProgressText','passwordInput','passwordAgainInput','inviteInput','familyTitle','syncStatus','syncMini','syncMiniActivity','settingsBtn','topTabs','mainContent','toast']){
+    if(!nodes[id])nodes[id]={};
+    nodes[id].classList=classSet();
+    nodes[id].querySelectorAll=()=>[];
+    nodes[id].setAttribute=()=>{};
+    nodes[id].style={};
+    nodes[id].value='';
+  }
+  nodes.authScreen.classList.remove('hidden');nodes.mainScreen.classList.add('hidden');
+  ctx.document.getElementById=id=>nodes[id]||null;
+  // Bridge never resolves: the UI must still unlock from a decryptable local cache.
+  let serverCalls=0;
+  hooks.Bridge.call=()=>{serverCalls++;return new Promise(()=>{})};
+  await hooks.refreshMeta();
+  assert.equal(serverCalls,0,'기기 캐시에 salt가 있으면 메타 API 대기 없이 PIN을 입력');
+  assert.equal(hooks.S.authSalt,fixedSalt);
+  assert.equal(hooks.S.setup,false);
+  nodes.passwordInput.value=pin;
+  await hooks.submitAuth({preventDefault(){}});
+  assert.equal(nodes.mainScreen.classList.contains('hidden'),false,'서버 응답이 없어도 저장된 암호화 기록을 즉시 개방');
+  assert.equal(nodes.authScreen.classList.contains('hidden'),true);
+  assert.equal(hooks.S.revision,8);
+  assert.equal(hooks.S.data.items.length,32,'캐시를 AES-GCM 복호화하여 정확한 가족 데이터 복원');
+  assert.equal(serverCalls,1,'잠금 해제 뒤 최신 서버 자료를 백그라운드에서 확인');
+  assert.equal(nodes.syncMini.dataset.state,'loading','서버 확인 중에는 완료 상태를 표시하지 않음');
+  // Never claim server sync succeeded while backend call is still pending.
+  assert(!nodes.syncMiniActivity.textContent.includes('완료'));
+}
+(async()=>{
+ await testInstantLocalUnlock();
+ console.log('PASS: PIN unlock from local AES-GCM cache before slow server reply; background sync remains pending');
+})().catch(err=>{console.error(err);process.exitCode=1});
