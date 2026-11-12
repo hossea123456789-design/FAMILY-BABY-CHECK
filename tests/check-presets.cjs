@@ -17,7 +17,7 @@ vm.createContext(ctx);
 for(const f of ['seed.js','toddler-seed.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
 const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
 assert(source.includes(' init();\n})();'),'앱 시작 진입점을 찾지 못했습니다. 테스트 스크립트를 확인하세요.');
-vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,readPreferredFamily,selectFamily};\n})();'),ctx);
+vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderNav,renderHeaderProgress,openEditor};\n})();'),ctx);
 const newborn=vm.runInContext('babyPrepInitialData()',ctx);
 const roadmap=vm.runInContext('babyPrepToddlerData()',ctx);
 const hooks=ctx.__testHooks;
@@ -68,4 +68,36 @@ ctx.localStorage={getItem:()=>{throw Error('storage disabled')},setItem:()=>{thr
 assert.equal(hooks.readPreferredFamily(),'ew-he','스토리지 차단에서도 앱이 열려야 함');
 hooks.selectFamily('hr-yw',true);
 assert.equal(hooks.S.family,'hr-yw','스토리지 차단 시에도 수동 선택 가능');
+
+const taskSection=roadmap.sections.find(name=>name.includes('일정'));
+const goodsSection=roadmap.sections.find(name=>name.includes('구매'));
+assert(taskSection&&goodsSection,'월령 로드맵에 일정/구매 분류가 있어야 함');
+const task=hooks.quickNewItem('일정 테스트',taskSection);
+const goods=hooks.quickNewItem('물품 테스트',goodsSection);
+assert.equal(task.type,'task');
+assert.equal(goods.type,'item');
+assert.equal(goods.status,'pending');
+assert.equal(goods.quantity,1);
+assert.equal(goods.estimate,0);
+assert.equal(goods.actual,0);
+assert.equal(goods.dueMonth,null);
+assert.equal(goods.notes,'');
+assert.equal(hooks.ageInMonths('2999-01-01'),null,'미래 출생일은 유효한 월령으로 계산하지 않음');
+const todayLocal=new Date(),currentDate=[todayLocal.getFullYear(),String(todayLocal.getMonth()+1).padStart(2,'0'),String(todayLocal.getDate()).padStart(2,'0')].join('-');
+assert.equal(hooks.ageInMonths(currentDate),0,'오늘 태어난 아이는 생후 0개월');
+const ui={topTabs:{innerHTML:''},bottomNav:{innerHTML:''},headerProgress:{innerHTML:''},modalTitle:{textContent:''},modalBody:{innerHTML:''},modal:{classList:{remove(){}}}};
+ctx.document.getElementById=id=>ui[id]||null;
+hooks.S.route='home';
+hooks.renderTabs();hooks.renderNav();hooks.renderHeaderProgress();
+assert.equal((ui.topTabs.innerHTML.match(/data-route=/g)||[]).length,4,'상단 메뉴 네 개');
+assert.equal((ui.bottomNav.innerHTML.match(/data-route=/g)||[]).length,4,'하단 메뉴 네 개');
+assert(ui.headerProgress.innerHTML.includes('role="progressbar"'),'모든 화면 상단 진행률 구성');
+const probe=roadmap.items.find(item=>item.type==='task');
+hooks.openEditor(probe.id);
+for(const key of ['title','section','type','status','repeat','owner','acquisition','quantity','product','giver','estimate','actual','dueMonth','dueOffset','dueDate','referenceUrl','notes']) {
+ assert(new RegExp('name="'+key+'"').test(ui.modalBody.innerHTML),'편집 폼 기존 필드 유지: '+key);
+}
+assert(ui.modalBody.innerHTML.includes('<details class="editor-more">'),'덜 쓰는 필드는 접힌 상세 보기로 유지');
+assert(source.includes('id="quickAddForm"'),'빠른 한 줄 추가 지원');
+console.log('PASS: 4 tabs, always-visible progress, quick add defaults, collapsed editor preserves fields, baby age from settings');
 console.log('PASS: newborn 90, toddler 32, month dates, cost, per-device family selection and recovery');
