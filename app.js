@@ -319,17 +319,17 @@
  function benefitCard(e,ctx){
    const state=benefitState(e.id),due=benefitDue(e,ctx),source=safeUrl(e.source),
      statusLabel=state==='done'?'확인 완료':state==='na'?'해당 없음':'미확인';
-   return \`<article class="benefit-card">
-     <div class="inline"><span class="chip">\${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · \${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}</span><span class="muted-small">\${statusLabel}</span></div>
-     <h3>\${escape(e.title)}</h3>
-     <p>\${escape(e.desc)}</p>
-     \${due?\`<p class="benefit-due">📅 \${escape(due)} 무렵 확인 \${!ctx.birthDate&&e.stage!=='pregnancy'?'(출산예정일 기준 예상)':''}</p>\`:''}
+   return `<article class="benefit-card">
+     <div class="inline"><span class="chip">${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · ${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}</span><span class="muted-small">${statusLabel}</span></div>
+     <h3>${escape(e.title)}</h3>
+     <p>${escape(e.desc)}</p>
+     ${due?`<p class="benefit-due">📅 ${escape(due)} 무렵 확인 ${!ctx.birthDate&&e.stage!=='pregnancy'?'(출산예정일 기준 예상)':''}</p>`:''}
      <div class="benefit-actions">
-       <button type="button" class="\${state==='done'?'secondary':'primary'}" data-action="benefit-status" data-benefit="\${escape(e.id)}" data-status="\${state==='done'?'pending':'done'}">\${state==='done'?'미확인으로 되돌리기':'✓ 확인 완료'}</button>
-       <button type="button" class="mini-btn" data-action="benefit-status" data-benefit="\${escape(e.id)}" data-status="\${state==='na'?'pending':'na'}">\${state==='na'?'대상 확인 전으로':'해당 없음'}</button>
-       \${source?\`<a href="\${escape(source)}" rel="noopener noreferrer" target="_blank">공식 안내</a>\`:''}
+       <button type="button" class="${state==='done'?'secondary':'primary'}" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='done'?'pending':'done'}">${state==='done'?'미확인으로 되돌리기':'✓ 확인 완료'}</button>
+       <button type="button" class="mini-btn" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='na'?'pending':'na'}">${state==='na'?'대상 확인 전으로':'해당 없음'}</button>
+       ${source?`<a href="${escape(source)}" rel="noopener noreferrer" target="_blank">공식 안내</a>`:''}
      </div>
-   </article>\`;
+   </article>`;
  }
  function renderBenefits(){
    const ctx=benefitContext(),stats=benefitStats(),all=S.benefitFilter==='all';
@@ -337,20 +337,20 @@
      .sort((a,b)=>((benefitState(a.id)==='pending'?0:1)-(benefitState(b.id)==='pending'?0:1))||a.month-b.month);
    const regionName=({seoul:'서울',gyeonggi:'경기도',other:'기타 지역',unknown:'거주 지역 미설정'})[ctx.region];
    const areaWarning=ctx.region==='unknown'?'<div class="help-block">지역 지원을 놓치지 않으려면 <button class="link-button" data-action="route" data-route="settings">설정에서 거주지 선택</button>을 먼저 해주세요. 지금은 전국 공통 혜택만 표시합니다.</div>':
-     ctx.region==='gyeonggi'?'<div class="warning">경기도 가족돌봄수당은 **시군별 참여·예산·신규접수 여부**가 다릅니다. 2026년 11월 공고에는 성남·용인 등 일부 시군 접수 중단이 포함됩니다. 2027년은 재확인해야 합니다.</div>':'';
-   return \`<div class="inline"><h2 class="section-title">🎁 우리 가족 혜택</h2><button class="link-button" data-action="route" data-route="home">홈으로</button></div>
-     <p class="muted-small">2026년 공식 안내 기준 · 현재 단계와 \${escape(regionName)} 혜택 · 세 가족 데이터는 각각 저장됩니다.</p>
-     \${areaWarning}
-     <div class="card benefit-summary"><div><strong>\${stats.done}개 확인 완료</strong><span>\${stats.pending.length}개 확인할 혜택</span></div><button class="mini-btn" data-action="route" data-route="settings">가족·거주지 설정</button></div>
-     <div class="benefit-filter"><button class="pill \${!all?'active':''}" data-action="benefit-filter" data-filter="relevant">현재 단계</button><button class="pill \${all?'active':''}" data-action="benefit-filter" data-filter="all">전체 단계·과거 내역</button></div>
-     <div class="benefits-list">\${results.map(e=>benefitCard(e,ctx)).join('')||'<div class="empty">현재 조건에 맞는 혜택이 없습니다.</div>'}</div>
-     <p class="tiny-note">각 항목은 수급 확정이 아닌 신청·자격 확인용입니다. 가족별 주소·소득·맞벌이/양육공백·아동 연령에 따라 달라질 수 있습니다. 연도가 바뀌면 금액·기한·신청 접수를 다시 확인해야 합니다.</p>\`;
+     ctx.region==='gyeonggi'?'<div class="warning">경기도 가족돌봄수당은 시·군별 참여·예산·신규 접수 여부가 다릅니다. 2026년 11월 공고에는 성남·용인 등 일부 시군 접수 중단이 포함됩니다. 2027년은 재확인해야 합니다.</div>':'';
+   return `<div class="inline"><h2 class="section-title">🎁 우리 가족 혜택</h2><button class="link-button" data-action="route" data-route="home">홈으로</button></div>
+     <p class="muted-small">2026년 공식 안내 기준 · 현재 단계와 ${escape(regionName)} 혜택 · 세 가족 데이터는 각각 저장됩니다.</p>
+     ${areaWarning}
+     <div class="card benefit-summary"><div><strong>${stats.done}개 확인 완료</strong><span>${stats.pending.length}개 확인할 혜택</span></div><button class="mini-btn" data-action="route" data-route="settings">가족·거주지 설정</button></div>
+     <div class="benefit-filter"><button class="pill ${!all?'active':''}" data-action="benefit-filter" data-filter="relevant">현재 단계</button><button class="pill ${all?'active':''}" data-action="benefit-filter" data-filter="all">전체 단계·과거 내역</button></div>
+     <div class="benefits-list">${results.map(e=>benefitCard(e,ctx)).join('')||'<div class="empty">현재 조건에 맞는 혜택이 없습니다.</div>'}</div>
+     <p class="tiny-note">각 항목은 수급 확정이 아닌 신청·자격 확인용입니다. 가족별 주소·소득·맞벌이/양육공백·아동 연령에 따라 달라질 수 있습니다. 연도가 바뀌면 금액·기한·신청 접수를 다시 확인해야 합니다.</p>`;
  }
  function benefitHomePanel(){
    const stats=benefitStats(),near=stats.pending.slice().sort((a,b)=>a.month-b.month).slice(0,3);
-   return \`<section class="benefit-home"><div class="inline"><h3 class="subhead">🎁 지원금·가족 혜택</h3><button class="link-button" data-action="route" data-route="benefits">전체 \${stats.relevant.length}개 보기</button></div>
-     \${stats.ctx.region==='unknown'?'<div class="help-block">서울·경기 등 지역 혜택은 <button class="link-button" data-action="route" data-route="settings">거주지 설정</button> 후 표시됩니다.</div>':''}
-     <div class="card">\${near.length?near.map(x=>\`<div class="benefit-preview"><span>\${escape(x.title)}</span><button class="mini-btn" data-action="route" data-route="benefits">확인</button></div>\`).join(''):'<div class="muted-small">현재 단계에서 확인할 혜택을 모두 검토했습니다.</div>'}</div></section>\`;
+   return `<section class="benefit-home"><div class="inline"><h3 class="subhead">🎁 지원금·가족 혜택</h3><button class="link-button" data-action="route" data-route="benefits">전체 ${stats.relevant.length}개 보기</button></div>
+     ${stats.ctx.region==='unknown'?'<div class="help-block">서울·경기 등 지역 혜택은 <button class="link-button" data-action="route" data-route="settings">거주지 설정</button> 후 표시됩니다.</div>':''}
+     <div class="card">${near.length?near.map(x=>`<div class="benefit-preview"><span>${escape(x.title)}</span><button class="mini-btn" data-action="route" data-route="benefits">확인</button></div>`).join(''):'<div class="muted-small">현재 단계에서 확인할 혜택을 모두 검토했습니다.</div>'}</div></section>`;
  }
 
  function renderHome(){const B=budget(),pct=B.items.length?Math.round(100*B.done/B.items.length):0,due=S.data.settings.dueDate,diff=daysUntil(due),alerts=alertItems(),toddler=isToddler();
