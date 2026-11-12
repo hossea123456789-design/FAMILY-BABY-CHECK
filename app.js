@@ -227,6 +227,8 @@
  }
  function toast(message){const t=byId('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2500)}
  async function showAuth(){
+   stopMiniProgress();
+   S.openedFromCache=false;
    S.key=null;S.authToken='';S.data=null;S.revision=0;S.generation=0;S.savedGeneration=0;S.retryCount=0;S.conflict=null;S.route='home';S.previousRoute='home';
    byId('authScreen').classList.remove('hidden');byId('mainScreen').classList.add('hidden');resetPins(true);byId('authMessage').textContent='';
    await refreshMeta();
