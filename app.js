@@ -311,11 +311,20 @@
    const parsed=dateValue(base);
    if(!parsed)return '';
    const date=addMonthsClamped(parsed,Number(entry.month||0));
+   if(entry.monthly){
+     if(dateValue(today())>=date)return today().slice(0,7)+'-01';
+     date.setDate(1);return isoDate(date);
+   }
    // 월 1~15일 접수: 23개월이 되는 '날'이 아닌 해당 월 첫날부터 확인
    if(['seoul-grandparent','gyeonggi-family-care'].includes(entry.id))date.setDate(1);
    return isoDate(date);
  }
- function benefitState(id){return S.data.benefits?.[id]?.status||'pending'}
+ function benefitState(id){
+   const entry=benefitEntries().find(x=>x.id===id),record=S.data.benefits?.[id];
+   if(!entry?.monthly)return record?.status||'pending';
+   if(record?.status==='na')return 'na';
+   return record?.monthly?.[today().slice(0,7)]||'pending';
+ }
  function benefitStats(){
    const ctx=benefitContext(),relevant=benefitEntries().filter(e=>benefitVisible(e,ctx));
    return {ctx,relevant,pending:relevant.filter(e=>benefitState(e.id)==='pending'),done:relevant.filter(e=>benefitState(e.id)==='done').length};
@@ -324,7 +333,7 @@
    const state=benefitState(e.id),due=benefitDue(e,ctx),source=safeUrl(e.source),
      statusLabel=state==='done'?'처리 완료':state==='review'?'확인·신청 중':state==='na'?'해당 없음':'미확인';
    return `<article class="benefit-card">
-     <div class="inline"><span class="chip">${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · ${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}</span><span class="muted-small">${statusLabel}</span></div>
+     <div class="inline"><span class="chip">${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · ${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}${e.monthly?' · 매월':''}</span><span class="muted-small">${statusLabel}</span></div>
      <h3>${escape(e.title)}</h3>
      <p>${escape(e.desc)}</p>
      ${due?`<p class="benefit-due">📅 ${escape(due)} 무렵 확인 ${!ctx.birthDate&&e.stage!=='pregnancy'?'(출산예정일 기준 예상)':''}</p>`:''}
@@ -442,8 +451,13 @@
     const code=el.dataset.benefit,next=el.dataset.status;
     if(!benefitEntries().some(b=>b.id===code)||!['done','review','na','pending'].includes(next))return;
     if(!S.data.benefits)S.data.benefits={};
-    S.data.benefits[code]={status:next,updatedAt:stamp()};
-    markDirty();toast('혜택 확인 상태를 기록했습니다.');break;
+    const entry=benefitEntries().find(b=>b.id===code),prev=S.data.benefits[code]||{};
+    if(entry.monthly){
+      const month=today().slice(0,7);
+      S.data.benefits[code]={...prev,status:next==='na'?'na':'pending',
+        monthly:{...(prev.monthly||{}),[month]:next},updatedAt:stamp()};
+    } else S.data.benefits[code]={status:next,updatedAt:stamp()};
+    markDirty();toast(entry.monthly?'이번 달 확인 상태를 기록했습니다.':'혜택 확인 상태를 기록했습니다.');break;
   }
   case 'add':openEditor(null,section,el.dataset.kind);break;
   case 'quick-add':S.route='all';S.sectionFilter=S.data.sections.includes(section)?section:'all';S.filter='all';S.search='';render();byId('quickTitle')?.focus();break;
