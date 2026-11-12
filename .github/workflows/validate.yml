@@ -24,5 +24,11 @@ jobs:
           node --check seed.js
           node --check toddler-seed.js
           node --check recommendations.js
+      - name: Apps Script server syntax check
+        run: |
+          cp apps-script/Code.gs /tmp/family-baby-Code.js
+          node --check /tmp/family-baby-Code.js
+          grep -q 'function doGet(e)' apps-script/Code.gs
+          grep -q 'function generateEnrollmentCodes()' apps-script/Code.gs
       - name: Validate presets, month dates and cost calculations
         run: node tests/check-presets.cjs
