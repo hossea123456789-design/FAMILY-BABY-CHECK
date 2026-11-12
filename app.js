@@ -309,7 +309,11 @@
  function benefitDue(entry,ctx){
    const base=entry.stage==='pregnancy'?ctx.dueDate:(ctx.birthDate||ctx.dueDate);
    const parsed=dateValue(base);
-   return parsed?isoDate(addMonthsClamped(parsed,Number(entry.month||0))):'';
+   if(!parsed)return '';
+   const date=addMonthsClamped(parsed,Number(entry.month||0));
+   // 월 1~15일 접수: 23개월이 되는 '날'이 아닌 해당 월 첫날부터 확인
+   if(['seoul-grandparent','gyeonggi-family-care'].includes(entry.id))date.setDate(1);
+   return isoDate(date);
  }
  function benefitState(id){return S.data.benefits?.[id]?.status||'pending'}
  function benefitStats(){
@@ -318,14 +322,15 @@
  }
  function benefitCard(e,ctx){
    const state=benefitState(e.id),due=benefitDue(e,ctx),source=safeUrl(e.source),
-     statusLabel=state==='done'?'확인 완료':state==='na'?'해당 없음':'미확인';
+     statusLabel=state==='done'?'처리 완료':state==='review'?'확인·신청 중':state==='na'?'해당 없음':'미확인';
    return `<article class="benefit-card">
      <div class="inline"><span class="chip">${e.region==='seoul'?'서울':e.region==='gyeonggi'?'경기':'전국'} · ${({pregnancy:'임신',birth:'출생',infant:'영아',toddler:'두 돌 전후'})[e.stage]}</span><span class="muted-small">${statusLabel}</span></div>
      <h3>${escape(e.title)}</h3>
      <p>${escape(e.desc)}</p>
      ${due?`<p class="benefit-due">📅 ${escape(due)} 무렵 확인 ${!ctx.birthDate&&e.stage!=='pregnancy'?'(출산예정일 기준 예상)':''}</p>`:''}
      <div class="benefit-actions">
-       <button type="button" class="${state==='done'?'secondary':'primary'}" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='done'?'pending':'done'}">${state==='done'?'미확인으로 되돌리기':'✓ 확인 완료'}</button>
+       <button type="button" class="${state==='done'?'secondary':'primary'}" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='done'?'pending':'done'}">${state==='done'?'완료 취소':'✓ 신청·처리 완료'}</button>
+       <button type="button" class="mini-btn" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='review'?'pending':'review'}">${state==='review'?'미확인':'확인 중'}</button>
        <button type="button" class="mini-btn" data-action="benefit-status" data-benefit="${escape(e.id)}" data-status="${state==='na'?'pending':'na'}">${state==='na'?'대상 확인 전으로':'해당 없음'}</button>
        ${source?`<a href="${escape(source)}" rel="noopener noreferrer" target="_blank">공식 안내</a>`:''}
      </div>
@@ -344,7 +349,7 @@
      <div class="card benefit-summary"><div><strong>${stats.done}개 확인 완료</strong><span>${stats.pending.length}개 확인할 혜택</span></div><button class="mini-btn" data-action="route" data-route="settings">가족·거주지 설정</button></div>
      <div class="benefit-filter"><button class="pill ${!all?'active':''}" data-action="benefit-filter" data-filter="relevant">현재 단계</button><button class="pill ${all?'active':''}" data-action="benefit-filter" data-filter="all">전체 단계·과거 내역</button></div>
      <div class="benefits-list">${results.map(e=>benefitCard(e,ctx)).join('')||'<div class="empty">현재 조건에 맞는 혜택이 없습니다.</div>'}</div>
-     <p class="tiny-note">각 항목은 수급 확정이 아닌 신청·자격 확인용입니다. 가족별 주소·소득·맞벌이/양육공백·아동 연령에 따라 달라질 수 있습니다. 연도가 바뀌면 금액·기한·신청 접수를 다시 확인해야 합니다.</p>`;
+     <p class="tiny-note">‘신청·처리 완료’는 실제 신청 또는 자격·처리 결과를 확인한 경우에만 선택하세요. 각 항목은 수급 확정이 아닌 신청·자격 확인용입니다. 가족별 주소·소득·맞벌이/양육공백·아동 연령에 따라 달라질 수 있습니다. 연도가 바뀌면 금액·기한·신청 접수를 다시 확인해야 합니다.</p>`;
  }
  function benefitHomePanel(){
    const stats=benefitStats(),near=stats.pending.slice().sort((a,b)=>a.month-b.month).slice(0,3);
@@ -435,7 +440,7 @@
   case 'benefit-filter':S.benefitFilter=el.dataset.filter==='all'?'all':'relevant';render();break;
   case 'benefit-status':{
     const code=el.dataset.benefit,next=el.dataset.status;
-    if(!benefitEntries().some(b=>b.id===code)||!['done','na','pending'].includes(next))return;
+    if(!benefitEntries().some(b=>b.id===code)||!['done','review','na','pending'].includes(next))return;
     if(!S.data.benefits)S.data.benefits={};
     S.data.benefits[code]={status:next,updatedAt:stamp()};
     markDirty();toast('혜택 확인 상태를 기록했습니다.');break;
