@@ -684,7 +684,7 @@
    if(!rec)return '';
    const age=recommendationAge(rec),candidate=recommendedCandidate(item,rec);
    const recommendation=candidate?.name||((rec.candidates||[])[0]?.name||'선택 기준 확인');
-   return `<div class="item-recommendation ${age.ready?'ready':'future'}"><span>추천 후보</span><strong>${escape(recommendation)}</strong><em>${escape(age.label)}</em></div>`;
+   return `<div class="item-recommendation ${age.ready?'ready':'future'}"><span>${(rec.candidates||[]).length?'추천 후보':'구매 기준'}</span><strong>${escape(recommendation)}</strong><em>${escape(age.label)}</em><button type="button" class="item-reco-button" data-action="recommend-item" data-id="${escape(item.id)}" aria-label="${escape(item.title)} ${(rec.candidates||[]).length?'제품 비교':'선택 기준'} 보기">${(rec.candidates||[]).length?'제품 비교':'선택 기준'} ↗</button></div>`;
  }
  function recommendationOverview(){
    const covered=activeItems().filter(i=>canRecommendProduct(i)&&recommendFor(i));
