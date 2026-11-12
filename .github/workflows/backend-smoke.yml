@@ -1,0 +1,37 @@
+name: Apps Script live endpoint smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - config.js
+      - .github/workflows/backend-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read backend endpoint from app config
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const source = fs.readFileSync('config.js', 'utf8');
+          const match = source.match(/backendUrl:\s*'(https:\/\/[^']+)'/);
+          if (!match) throw new Error('Backend URL missing from config.js');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'BACKEND_URL=' + match[1] + '\n');
+          NODE
+      - name: Verify Apps Script publicly serves access guard
+        run: |
+          curl --location --fail --silent --show-error --max-time 30 "$BACKEND_URL" > /tmp/bridge-guard.html
+          if grep -Fq '가족 앱을 통해 접근해 주세요.' /tmp/bridge-guard.html; then
+            echo "Backend URL reachable and bridge nonce guard responding."
+          else
+            echo "Unexpected Apps Script response; verify web app access is set to Anyone."
+            head -c 600 /tmp/bridge-guard.html || true
+            exit 1
+          fi
