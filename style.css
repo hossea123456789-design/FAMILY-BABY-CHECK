@@ -48,3 +48,26 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 .editor-more .field{margin-top:5px}
 .editor-sticky-actions{position:sticky;bottom:-24px;z-index:2;background:linear-gradient(#ffffffef,#fff);padding:12px 0 18px;margin-bottom:0}
 @media(max-width:375px){.quick-add-line .primary{padding:10px 13px}.editor-more .info-grid{grid-template-columns:1fr}}
+
+/* v1.2.1 family benefits: secondary destination, no extra main navigation tabs */
+.benefit-home{margin:14px 0 18px}
+.benefit-home .subhead{margin:2px 0 8px}
+.benefit-preview{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #e8edf5}
+.benefit-preview:last-child{border-bottom:0}
+.benefit-preview span{font-size:13px;font-weight:720;line-height:1.45;flex:1}
+.benefit-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f7faff}
+.benefit-summary strong{display:block;font-size:15px}
+.benefit-summary span{display:block;color:#687890;font-size:11px;margin-top:4px}
+.benefit-filter{display:flex;gap:8px;margin:14px 0 7px}
+.benefit-filter .pill{flex:1;padding:9px 8px}
+.benefit-card{border:1px solid #e4eaf4;border-radius:16px;background:#fff;padding:14px;margin:11px 0}
+.benefit-card .inline{margin-bottom:9px}
+.benefit-card h3{font-size:15px;line-height:1.45;margin:0 0 7px}
+.benefit-card p{font-size:12px;color:#69778d;line-height:1.6;margin:6px 0}
+.benefit-card .benefit-due{font-size:11px;color:#2b5aa3;background:#eef4ff;padding:7px 9px;border-radius:8px;margin-top:9px}
+.benefit-actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:12px}
+.benefit-actions button{font-size:11px;padding:9px 10px;white-space:nowrap}
+.benefit-actions a{color:#245bc4;font-size:12px;font-weight:720;padding:6px 1px}
+.settings-region{display:flex;flex-direction:column;gap:9px;background:#f6f9ff;border:1px solid #e3ecf9;border-radius:13px;padding:12px}
+.settings-region .tiny-note{margin:0}
+@media(max-width:360px){.benefit-actions button{padding:8px 7px}.benefit-card{padding:12px}}
