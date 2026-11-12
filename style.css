@@ -3,3 +3,13 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 
 /* 세 번째 가족 선택 및 반복 항목 구분 */
 .family-grid{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}.family-choice[data-family="hr-yw"].active{border-color:#46a785;background:#eafbf4}.chip.repeating{background:#e5f5e8;color:#276f43}
+/* Family PIN keypad */
+.pin-display{display:flex;width:100%;justify-content:center;gap:17px;align-items:center;min-height:62px;border:2px solid var(--line);border-radius:16px;background:#f8faff;padding:10px;transition:border-color .15s,background .15s}
+.pin-display.active,.pin-display:focus-visible{border-color:var(--blue);background:var(--blue-lite);outline:none}
+.pin-mark{display:block;width:18px;height:18px;border:2px solid #bdc8d8;border-radius:50%;background:#fff}
+.pin-mark.filled{background:var(--blue);border-color:var(--blue)}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;max-width:330px;width:100%;margin:0 auto}
+.pin-key{border:1px solid #e2e8f0;background:#f7f9fc;color:var(--ink);font-size:24px;font-weight:750;border-radius:17px;min-height:56px;touch-action:manipulation}
+.pin-key:active{background:#dfeaff;transform:scale(.97)}
+.pin-key.pin-aux{font-size:15px;color:#5c6b85;background:#edf1f7}
+@media(max-width:360px){.pin-key{min-height:48px}.pin-display{min-height:55px}}

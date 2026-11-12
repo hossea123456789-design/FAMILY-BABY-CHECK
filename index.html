@@ -21,9 +21,29 @@
       <p id="authMode" class="status-line">접속 상태 확인 중…</p>
       <form id="authForm" class="stack">
         <label id="inviteWrap" class="field hidden">최초 등록 초대 코드<input id="inviteInput" type="text" autocomplete="one-time-code" placeholder="전달받은 초대 코드" /></label>
-        <label class="field">비밀번호<input id="passwordInput" type="password" autocomplete="current-password" placeholder="비밀번호 입력" required minlength="12" /></label>
-        <label id="passwordAgainWrap" class="field hidden">비밀번호 확인<input id="passwordAgainInput" type="password" autocomplete="new-password" placeholder="같은 비밀번호를 다시 입력" /></label>
-        <p id="passwordGuide" class="hint">처음 설정한 비밀번호를 부부가 함께 사용합니다. 서버에 저장되지 않으며 분실 시 복구할 수 없습니다.</p>
+        <div class="field"><span id="pinLabel">4자리 숫자 PIN</span>
+          <button type="button" id="pinPrimaryDisplay" class="pin-display" aria-label="숫자 4자리 중 0자리 입력" aria-pressed="false"><span class="pin-mark"></span><span class="pin-mark"></span><span class="pin-mark"></span><span class="pin-mark"></span></button>
+        </div>
+        <div id="passwordAgainWrap" class="field hidden"><span>PIN 한 번 더 입력</span>
+          <button type="button" id="pinConfirmDisplay" class="pin-display" aria-label="숫자 4자리 중 0자리 입력" aria-pressed="false"><span class="pin-mark"></span><span class="pin-mark"></span><span class="pin-mark"></span><span class="pin-mark"></span></button>
+        </div>
+        <input type="hidden" id="passwordInput" autocomplete="off" />
+        <input type="hidden" id="passwordAgainInput" autocomplete="off" />
+        <div id="pinPad" class="pin-keypad" aria-label="숫자 비밀번호 패드">
+          <button type="button" class="pin-key" data-pin="1" aria-label="1">1</button>
+          <button type="button" class="pin-key" data-pin="2" aria-label="2">2</button>
+          <button type="button" class="pin-key" data-pin="3" aria-label="3">3</button>
+          <button type="button" class="pin-key" data-pin="4" aria-label="4">4</button>
+          <button type="button" class="pin-key" data-pin="5" aria-label="5">5</button>
+          <button type="button" class="pin-key" data-pin="6" aria-label="6">6</button>
+          <button type="button" class="pin-key" data-pin="7" aria-label="7">7</button>
+          <button type="button" class="pin-key" data-pin="8" aria-label="8">8</button>
+          <button type="button" class="pin-key" data-pin="9" aria-label="9">9</button>
+          <button type="button" class="pin-key pin-aux" data-pin="clear" aria-label="모두 지우기">초기화</button>
+          <button type="button" class="pin-key" data-pin="0" aria-label="0">0</button>
+          <button type="button" class="pin-key pin-aux" data-pin="delete" aria-label="한 자리 지우기">⌫</button>
+        </div>
+        <p id="passwordGuide" class="hint">부부가 함께 사용할 숫자 4자리를 설정합니다. 암호문 유출에 대한 강력한 방어 수단은 아니며, PIN을 잊으면 저장된 기록을 복구하기 어렵습니다.</p>
         <button id="authSubmit" type="submit" class="primary">잠금 해제</button>
       </form>
       <p id="authMessage" role="status" class="form-message"></p>

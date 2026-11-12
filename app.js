@@ -7,6 +7,44 @@
  const FAMILY={'ew-he':'은원 & 하은','ce-hy':'채은 & 하영','hr-yw':'하람 & 예원'};
  const enc=new TextEncoder(),dec=new TextDecoder();
  const S={family:'ew-he',setup:false,authToken:'',key:null,data:null,revision:0,route:'home',saving:false,generation:0,savedGeneration:0,conflict:null,filter:'all',search:'',initialized:false,retryCount:0,backend:!!CONFIG.backendUrl};
+ let activePin='passwordInput';
+ function paintPins(){
+   [['passwordInput','pinPrimaryDisplay'],['passwordAgainInput','pinConfirmDisplay']].forEach(([inputId,displayId])=>{
+     const el=byId(displayId),v=byId(inputId).value;
+     if(!el)return;
+     el.classList.toggle('active',activePin===inputId);
+     el.setAttribute('aria-pressed',activePin===inputId?'true':'false');
+     el.setAttribute('aria-label','숫자 4자리 중 '+v.length+'자리 입력. 선택하려면 누르세요.');
+     el.querySelectorAll('.pin-mark').forEach((mark,i)=>mark.classList.toggle('filled',i<v.length));
+   });
+ }
+ function resetPins(clearInvite=false){
+   byId('passwordInput').value='';
+   byId('passwordAgainInput').value='';
+   if(clearInvite)byId('inviteInput').value='';
+   activePin='passwordInput';
+   paintPins();
+ }
+ function pinPress(value){
+   if(byId('authScreen').classList.contains('hidden'))return;
+   if(byId('authSubmit').disabled)return;
+   const input=byId(activePin);
+   if(value==='clear'){input.value='';}
+   else if(value==='delete'){input.value=input.value.slice(0,-1);}
+   else if(/^\d$/.test(value)&&input.value.length<4){input.value+=value;}
+   paintPins();
+   if(input.value.length===4){
+     if(S.setup&&activePin==='passwordInput'){
+       activePin='passwordAgainInput';paintPins();
+     }else if(!S.setup){
+       byId('authForm').requestSubmit();
+     }else if(byId('inviteInput').value.trim()){
+       byId('authForm').requestSubmit();
+     }else{
+       byId('authMessage').textContent='초대 코드를 먼저 입력한 뒤 PIN 설정 버튼을 눌러주세요.';
+     }
+   }
+ }
  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  const fmt=v=>Math.round(Number(v)||0).toLocaleString('ko-KR')+'원';
  const escape=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -111,14 +149,14 @@
  function toast(message){const t=byId('toast');t.textContent=message;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2500)}
  async function showAuth(){
    S.key=null;S.authToken='';S.data=null;S.revision=0;S.generation=0;S.savedGeneration=0;S.retryCount=0;S.conflict=null;S.route='home';
-   byId('authScreen').classList.remove('hidden');byId('mainScreen').classList.add('hidden');byId('passwordInput').value='';byId('passwordAgainInput').value='';byId('authMessage').textContent='';
+   byId('authScreen').classList.remove('hidden');byId('mainScreen').classList.add('hidden');resetPins(true);byId('authMessage').textContent='';
    await refreshMeta();
  }
  let metaRequestSeq=0;
  async function refreshMeta(){
    const seq=++metaRequestSeq,selectedFamily=S.family;
-   const mode=byId('authMode');mode.textContent='접속 상태 확인 중…';byId('authSubmit').disabled=true;
-   try{const r=await Bridge.call({action:'meta',family:selectedFamily});if(seq!==metaRequestSeq)return;S.setup=!r.initialized;S.authSalt=r.salt;byId('inviteWrap').classList.toggle('hidden',!S.setup);byId('passwordAgainWrap').classList.toggle('hidden',!S.setup);byId('passwordInput').autocomplete=S.setup?'new-password':'current-password';byId('passwordInput').placeholder=S.setup?'12자 이상, 추측하기 어려운 비밀번호':'설정한 비밀번호';byId('authSubmit').textContent=S.setup?'비밀번호 설정 후 시작':'잠금 해제';mode.textContent=S.setup?'처음 입장합니다. 초대 코드와 비밀번호를 설정하세요.':'등록된 가족 공간입니다. 비밀번호를 입력하세요.';}
+   const mode=byId('authMode');mode.textContent='접속 상태 확인 중…';byId('authSubmit').disabled=true;resetPins(true);
+   try{const r=await Bridge.call({action:'meta',family:selectedFamily});if(seq!==metaRequestSeq)return;S.setup=!r.initialized;S.authSalt=r.salt;byId('inviteWrap').classList.toggle('hidden',!S.setup);byId('passwordAgainWrap').classList.toggle('hidden',!S.setup);byId('pinLabel').textContent=S.setup?'새 4자리 PIN 설정':'4자리 PIN 입력';byId('authSubmit').textContent=S.setup?'PIN 설정 후 시작':'잠금 해제';mode.textContent=S.setup?'처음 입장합니다. 초대 코드를 입력하고 숫자 PIN을 두 번 설정하세요.':'등록된 가족 공간입니다. 숫자 PIN을 입력하세요.';paintPins();}
    catch(e){if(seq!==metaRequestSeq)return;mode.textContent='연결 오류: '+e.message;byId('authMessage').textContent='연결 상태를 확인한 뒤 다시 시도하세요.'}
    finally{if(seq===metaRequestSeq)byId('authSubmit').disabled=false}
  }
@@ -126,8 +164,8 @@
   e.preventDefault();const pass=byId('passwordInput').value,msg=byId('authMessage'),btn=byId('authSubmit');msg.textContent='';btn.disabled=true;btn.textContent='암호화 키 확인 중…';
   try{
    if(S.setup){
-     if(pass.length<12)throw Error('비밀번호는 12자 이상이어야 합니다.');
-     if(pass!==byId('passwordAgainInput').value)throw Error('비밀번호 확인이 일치하지 않습니다.');
+     if(!/^\d{4}$/.test(pass))throw Error('PIN은 숫자 4자리여야 합니다.');
+     if(pass!==byId('passwordAgainInput').value)throw Error('PIN 확인이 일치하지 않습니다.');
      if(!byId('inviteInput').value.trim())throw Error('초대 코드는 필수입니다.');
      const salt=b64(rand(16)),derived=await derive(pass,salt);S.key=derived.key;S.authToken=derived.authToken;S.data=S.family==='hr-yw'?babyPrepToddlerData():babyPrepInitialData();
      const cipher=await encryptPayload(S.data);
@@ -152,8 +190,8 @@
    byId('authScreen').classList.add('hidden');byId('mainScreen').classList.remove('hidden');byId('familyTitle').textContent=FAMILY[S.family];
    labelStatus(S.backend?'🔐 암호화 동기화 연결됨':'⚠ 이 기기에만 암호화 저장',S.backend?'saved':'error');render();
    if(S.generation>S.savedGeneration)queueSave();
-  }catch(err){S.key=null;S.authToken='';S.data=null;msg.textContent=err.message||'잠금 해제 실패';}
-  finally{btn.disabled=false;btn.textContent=S.setup?'비밀번호 설정 후 시작':'잠금 해제'}
+  }catch(err){S.key=null;S.authToken='';S.data=null;resetPins();msg.textContent=err.message||'잠금 해제 실패';}
+  finally{btn.disabled=false;btn.textContent=S.setup?'PIN 설정 후 시작':'잠금 해제'}
  }
  let saveTimer=null;
  function markDirty(){S.retryCount=0;S.generation++;labelStatus('● 변경 사항 저장 대기','');queueSave();render()}
@@ -284,7 +322,16 @@
    if(formId==='settingsForm'){e.preventDefault();const f=new FormData(e.target);S.data.settings={...S.data.settings,dueDate:String(f.get('dueDate')||''),babyName:String(f.get('babyName')||'').trim(),budget:Math.max(0,Number(f.get('budget'))||0)};markDirty();toast('설정을 저장했습니다.');return}
    if(formId==='sectionForm'){e.preventDefault();const f=new FormData(e.target),name=String(f.get('section')||'').trim();if(!name)return;if(S.data.sections.includes(name))return toast('이미 있는 탭입니다.');if(S.data.sections.length>=30)return toast('탭은 최대 30개까지 만들 수 있습니다.');S.data.sections.push(name);S.route='section:'+name;markDirty();toast('새 탭을 추가했습니다.');return}
  }
- function bind(){byId('authForm').addEventListener('submit',submitAuth);document.addEventListener('click',clickAction);document.addEventListener('submit',submitAction);byId('familyGrid').addEventListener('click',e=>{const b=e.target.closest('[data-family]');if(!b)return;S.family=b.dataset.family;document.querySelectorAll('.family-choice').forEach(x=>x.classList.toggle('active',x===b));refreshMeta()});byId('listSearch')?.addEventListener('input',()=>{});
+ function bind(){byId('authForm').addEventListener('submit',submitAuth);
+  byId('pinPad').addEventListener('click',e=>{const b=e.target.closest('[data-pin]');if(b)pinPress(b.dataset.pin)});
+  byId('pinPrimaryDisplay').addEventListener('click',()=>{activePin='passwordInput';paintPins()});
+  byId('pinConfirmDisplay').addEventListener('click',()=>{if(S.setup){activePin='passwordAgainInput';paintPins()}});
+  document.addEventListener('keydown',e=>{
+    if(byId('authScreen').classList.contains('hidden')||e.target===byId('inviteInput'))return;
+    if(/^\d$/.test(e.key)){e.preventDefault();pinPress(e.key)}
+    else if(e.key==='Backspace'){e.preventDefault();pinPress('delete')}
+  });
+  document.addEventListener('click',clickAction);document.addEventListener('submit',submitAction);byId('familyGrid').addEventListener('click',e=>{const b=e.target.closest('[data-family]');if(!b)return;S.family=b.dataset.family;document.querySelectorAll('.family-choice').forEach(x=>x.classList.toggle('active',x===b));refreshMeta()});byId('listSearch')?.addEventListener('input',()=>{});
    document.addEventListener('input',e=>{if(e.target.id==='listSearch'){S.search=e.target.value;const focus=e.target.selectionStart;render();const el=byId('listSearch');el?.focus();el?.setSelectionRange(focus,focus)}});
    document.addEventListener('change',e=>{if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
    byId('modalClose').addEventListener('click',closeModal);byId('modal').addEventListener('click',e=>{if(e.target===byId('modal')&&!S.conflict)closeModal()});
