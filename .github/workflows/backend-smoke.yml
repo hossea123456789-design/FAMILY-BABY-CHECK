@@ -43,9 +43,8 @@ jobs:
             head -c 1300 /tmp/bridge.html
             exit 1
           fi
-          if ! grep -Fq 'https://hossea123456789-design.github.io' /tmp/bridge.html; then
-            echo "Allowed origin missing. Received HTML snippet:"
-            head -c 1300 /tmp/bridge.html
+          if ! grep -Fq 'BABY_PREP_BRIDGE_REQUEST' /tmp/bridge.html; then
+            echo "Bridge request listener missing."
             exit 1
           fi
-          echo "Bridge HTML and allowed origin returned successfully."
+          echo "Apps Script HTMLService bridge returned READY and REQUEST handlers successfully."
