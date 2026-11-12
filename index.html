@@ -5,7 +5,22 @@
   <meta name="theme-color" content="#2f6fed" />
   <meta name="description" content="부부가 함께 쓰는 임신·출산 준비 체크리스트" />
   <title>우리 가족 체크노트</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="application-name" content="우리 가족 체크노트" />
+  <link rel="stylesheet" href="style.css?v=1.1.2" />
+
+  <style id="pin-keypad-critical">
+    .auth-card .pin-display{display:flex;align-items:center;justify-content:center;gap:20px;width:min(100%,320px);min-height:64px;margin:0 auto;border:1px solid #dce5f4;border-radius:18px;padding:12px 16px;background:#f5f8ff;cursor:pointer}
+    .auth-card .pin-display.active{border-color:#3475e9;box-shadow:0 0 0 3px #3475e91a}
+    .auth-card .pin-mark{display:block;flex:0 0 17px;width:17px;height:17px;border-radius:50%;background:white;border:2px solid #a8b7d2}
+    .auth-card .pin-mark.filled{background:#2f6fed;border-color:#2f6fed}
+    .auth-card .pin-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(100%,320px);margin:5px auto 4px}
+    .auth-card .pin-key{appearance:none;display:flex;align-items:center;justify-content:center;height:60px;min-width:0;padding:0;border-radius:16px;border:1px solid #e3e9f2;background:#f5f7fb;color:#253046;font-weight:700;font-size:24px;line-height:1;cursor:pointer;touch-action:manipulation}
+    .auth-card .pin-key:active{background:#dde9ff;transform:scale(.97)}
+    .auth-card .pin-key.pin-aux{font-size:14px;color:#57657b;background:#eaf0f8}
+    .auth-card .pin-key:focus-visible,.auth-card .pin-display:focus-visible{outline:3px solid #85b3ff;outline-offset:2px}
+    .auth-card #pinLabel,.auth-card #passwordAgainWrap>span{font-weight:750;font-size:13px}
+    @media(max-width:360px){.auth-card .pin-display{min-height:56px}.auth-card .pin-key{height:52px}}
+  </style>
 </head><body>
 <div class="app">
   <section id="authScreen" class="auth-screen">
@@ -29,7 +44,7 @@
         </div>
         <input type="hidden" id="passwordInput" autocomplete="off" />
         <input type="hidden" id="passwordAgainInput" autocomplete="off" />
-        <div id="pinPad" class="pin-keypad" aria-label="숫자 비밀번호 패드">
+        <div id="pinPad" class="pin-keypad" role="group" aria-label="숫자 비밀번호 패드">
           <button type="button" class="pin-key" data-pin="1" aria-label="1">1</button>
           <button type="button" class="pin-key" data-pin="2" aria-label="2">2</button>
           <button type="button" class="pin-key" data-pin="3" aria-label="3">3</button>
@@ -44,7 +59,7 @@
           <button type="button" class="pin-key pin-aux" data-pin="delete" aria-label="한 자리 지우기">⌫</button>
         </div>
         <p id="passwordGuide" class="hint">부부가 함께 사용할 숫자 4자리를 설정합니다. 암호문 유출에 대한 강력한 방어 수단은 아니며, PIN을 잊으면 저장된 기록을 복구하기 어렵습니다.</p>
-        <button id="authSubmit" type="submit" class="primary">잠금 해제</button>
+        <button id="authSubmit" type="submit" class="primary">PIN 확인</button>
       </form>
       <p id="authMessage" role="status" class="form-message"></p>
       <p id="offlineBanner" class="warning hidden">미연결 미리보기: 이 기기에만 암호화 저장됩니다. GitHub Pages + Apps Script 설정 이후 부부 간 동기화가 시작됩니다. 공유 전에 서버 설정을 완료하세요.</p>
@@ -63,5 +78,5 @@
 <div id="modal" class="modal-backdrop hidden" role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-heading"><h2 id="modalTitle">항목 편집</h2><button id="modalClose" type="button" class="icon-btn" aria-label="닫기">✕</button></div><div id="modalBody"></div></div></div>
 <div id="toast" class="toast" aria-live="polite"></div>
 <iframe id="apiFrame" title="암호화 데이터 전송" class="api-frame" referrerpolicy="no-referrer"></iframe>
-<script src="config.js"></script><script src="seed.js"></script><script src="toddler-seed.js"></script><script src="recommendations.js"></script><script src="app.js"></script>
+<script src="config.js?v=1.1.2"></script><script src="seed.js?v=1.1.2"></script><script src="toddler-seed.js?v=1.1.2"></script><script src="recommendations.js?v=1.1.2"></script><script src="app.js?v=1.1.2"></script>
 </body></html>

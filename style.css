@@ -13,3 +13,8 @@ html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);
 .pin-key:active{background:#dfeaff;transform:scale(.97)}
 .pin-key.pin-aux{font-size:15px;color:#5c6b85;background:#edf1f7}
 @media(max-width:360px){.pin-key{min-height:48px}.pin-display{min-height:55px}}
+
+/* v1.1.2: central 3×4 PIN pad, including wide-screen layout */
+.auth-card .pin-display{max-width:320px;margin-inline:auto}
+.auth-card .pin-keypad{width:min(100%,320px);max-width:320px}
+.auth-card .pin-key{display:flex;align-items:center;justify-content:center}
