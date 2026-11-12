@@ -22,11 +22,11 @@ const BABY_PREP_RECOMMENDATIONS={
   ],
   // 구버전 계정을 열 때 기존 구매 이력은 유지하고, 중복되지 않는 실물 구매후보만 추가합니다.
   curatedGoods:[
-    {id:'first-cars',title:'18개월+ 첫 자동차 · 듀플로 10474',section:'발달단계 준비',month:20,notes:'18개월부터 안전하게 시작하는 큰 블록 자동차. 보유 중이면 제외',recId:'first-cars'},
+    {id:'first-cars',title:'18개월+ 첫 자동차 · 듀플로 10474',section:'발달단계 준비',month:null,notes:'18개월부터 안전하게 시작하는 큰 블록 자동차. 보유 중이면 제외',recId:'first-cars'},
     {id:'toddler-clock',title:'큰 숫자 전자시계 (아기용 안전 구조)',section:'발달단계 준비',month:24,notes:'시계를 좋아하는 아이용. 버튼전지 접근·밝기·소음·전도 위험 확인 후 선택',recId:'toddler-clock'},
     {id:'book-board',title:'24개월 그림책 · 달님 안녕 보드북',section:'발달단계 준비',month:24,notes:'짧은 일상 이야기, 두꺼운 보드북. 집에 이미 있다면 제외',recId:'book-board'},
     {id:'animal-puzzle',title:'24개월 동물 판퍼즐 · 핑크퐁',section:'발달단계 준비',month:24,notes:'개별 조각 크기·삼킴 위험·KC와 적정 연령을 확인',recId:'animal-puzzle'},
-    {id:'animal-train',title:'동물 기차 블록 · 레고 듀플로 10412',section:'발달단계 준비',month:24,notes:'제조사 18개월 이상. 색·동물 매칭 및 조립 놀이, 이미 있으면 제외',recId:'animal-train'},
+    {id:'animal-train',title:'동물 기차 블록 · 레고 듀플로 10412',section:'발달단계 준비',month:null,notes:'제조사 18개월 이상. 색·동물 매칭 및 조립 놀이, 이미 있으면 제외',recId:'animal-train'},
     {id:'vehicle-block',title:'24개월 자동차 블록 · 레고 듀플로 10475',section:'발달단계 준비',month:24,notes:'제조사 만 2세 이상. 차를 좋아하는 아기에게, 기존 탈것 장난감과 중복 확인',recId:'vehicle-block'},
     {id:'magnetic-36',title:'36개월 이후 자석 블록 구매 검토',section:'발달단계 준비',month:36,notes:'36개월 미만은 추천 대상에서 제외. 제조사 연령·자석 이탈 및 삼킴 위험 우선 확인',recId:'magnetic-36'}
   ],
