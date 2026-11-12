@@ -183,10 +183,10 @@
    const el=byId('syncStatus');el.textContent=message;el.className='sync-status '+mode;
    const mini=byId('syncMini'),activity=byId('syncMiniActivity');
    if(!mini||!activity)return;
-   const state=mode==='error'?'error':mode==='saved'?'done':mode==='cached'?'loading':
+   const state=mode==='error'?'error':mode==='saved'?'done':mode==='loaded'?'loaded':mode==='cached'?'loading':
      /대기|미전송/.test(message)?'pending':/확인|불러|저장 중|기기 암호화|서버|동기화/.test(message)?'loading':'idle';
    mini.dataset.state=state;
-   activity.textContent=state==='done'?'✓ 저장 완료':state==='error'?'연결 확인 필요':
+   activity.textContent=state==='done'?'✓ 저장 완료':state==='loaded'?'✓ 최신 확인':state==='error'?'연결 확인 필요':
      state==='pending'?'저장 대기':state==='loading'?'동기화 중':'연결됨';
    mini.setAttribute('aria-label',message);
  }
@@ -276,7 +276,7 @@
      S.openedFromCache=openedCache;
    }
    byId('authScreen').classList.add('hidden');byId('mainScreen').classList.remove('hidden');byId('familyTitle').textContent=FAMILY[S.family];
-   labelStatus(S.openedFromCache&&S.backend?'기기 기록을 열었습니다 · 서버 확인 중':S.backend?'✓ 서버 기록 확인 완료':'✓ 이 기기 기록 확인',S.openedFromCache&&S.backend?'cached':'saved');render();
+   labelStatus(S.openedFromCache&&S.backend?'기기 기록을 열었습니다 · 서버 확인 중':S.backend?'✓ 서버 기록 불러오기 완료':'✓ 이 기기 기록 확인',S.openedFromCache&&S.backend?'cached':S.backend?'loaded':'saved');render();
    if(S.generation>S.savedGeneration)queueSave();
    if(S.openedFromCache&&S.backend)void refreshFromServer(true);
    S.openedFromCache=false;
@@ -317,7 +317,7 @@
        S.revision=r.revision;storageSet(cacheKey(),{cipher:r.cipher,revision:r.revision,salt:S.authSalt,pending:false});
        render();if(!quiet)toast('다른 기기에서 수정한 내역을 반영했습니다.');
      }else if(!quiet)toast('최신 상태입니다.');
-     labelStatus('✓ 서버 최신 기록 확인 완료','saved');
+     labelStatus('✓ 서버 최신 기록 확인 완료','loaded');
    }catch(e){
      labelStatus('⚠ 서버 확인 실패 · 이 기기 암호화 기록 유지','error');
      if(!quiet)toast(e.message);
