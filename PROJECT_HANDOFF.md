@@ -23,7 +23,7 @@ GitHub Pages: index.html, style.css, config.js, app.js,
   seed.js, toddler-seed.js, benefits.js, recommendations.js
   ├─ 가족 선택 / 마지막 가족 선택 localStorage(기기별 코드만 저장)
   ├─ PIN 4자리 → PBKDF2-SHA256(310,000회) / AES-GCM
-  ├─ 4개 메뉴(홈·체크·일정·설정), 혜택은 홈의 2차 페이지
+  ├─ 상단 단일 4개 메뉴(홈·체크·일정·혜택), 설정은 우측 상단 ⚙
   └─ iframe postMessage + 매 접속 nonce와 출처 검증
        ↓
 Google Apps Script 웹앱 (apps-script/Code.gs, 단일 파일·내장 브리지)
@@ -35,7 +35,7 @@ Google Sheets 소유자 전용 "우리 가족 체크노트_DB_암호문 전용"
 ```
 
 - **앱 URL:** https://hossea123456789-design.github.io/FAMILY-BABY-CHECK/
-- **프런트 버전:** `1.2.1` (`index.html`의 CSS/JS 캐시 쿼리와 `config.js`).
+- **프런트 버전:** `1.3.2` (`index.html`의 CSS/JS 캐시 쿼리와 `config.js`).
 - **GAS 공개 엔드포인트:** https://script.google.com/macros/s/AKfycbxEqsoeEzlHfME5CE7SUa-XjZQ4G7UspNM9wLXsIQcPXvLTyheeuELTPR7T3Pinb6sl/exec
 - **GAS 배포:** GitHub 서버 파일을 고쳐도 실제 Google Apps Script 코드와 배포는 자동 변경되지 않음. `apps-script/Bridge.html`은 이전 분리형 참고 파일; 현재 `Code.gs` 내 `BRIDGE_DOCUMENT` 사용. 데이터 스키마를 바꿀 때는 기존 암호문과 충돌 없는지 검증할 것.
 - **전용 DB는 다른 금융 시트에서 완전히 분리.** Google Sheets ID를 공개 문서에 추가하지 말 것. 문서 제목으로 Drive에서 찾아야 함.
@@ -49,6 +49,19 @@ Google Sheets 소유자 전용 "우리 가족 체크노트_DB_암호문 전용"
 - **개선:** 카드 아래에 단일 중립 `내 진행 상태` 드롭다운(미확인 / 조건·신청 확인 중 / 신청·처리 완료 / 해당 없음). **신청 완료가 기본값이 아님**. '공식 안내 열기 ↗' 링크는 별도 배치하고 실제 외부 안내와 앱 내 기록 변경을 명확히 구분. 값 변경 즉시 가족 데이터에 반영·암호화 자동저장 예약. 혜택 카드 전체 재렌더링 없이 요약 건수만 제자리 업데이트. 월별 활동 내역과 다른 가족 데이터 보존.
 - **검증 필요:** 실제 모바일의 네이티브 선택창/접근성/동기화 확인. JS 단위 테스트로 미확인 선택·단일 입력·상태 변경·과거 값 보존을 검증. PIN 및 Apps Script 코드는 변경하지 않음.
 - **릴리스:** 프런트 `v1.2.3`; 실배포 여부는 같은 커밋의 GitHub Actions를 확인할 것.
+
+## 2026-11-12 · v1.3.2 UI 보완 및 유하 앱 비교 후속
+
+**사용자 스크린샷 재현 문제:** 편집 모달이 길어 스크롤할 때 뒷배경 딤드 바깥 하단에 흰색 단절 영역이 보임. 지원금/지원 서비스 같은 비물품에서도 '추천 받기' 버튼이 있음. 홈에 원래 기대한 현황 지표와 아이 나이·프로필이 빠짐.
+
+**조치:** `app.js`, `style.css`, `tests/check-presets.cjs`, `index.html`, `config.js`에서 v1.3.2 수정.
+1. 모바일 오버레이는 `100dvh` 높이로 전체 화면을 덮고, 폼 편집창을 아래에 밀착. 내부 콘텐츠만 스크롤. 모달 열린 동안 `document.body` 위치를 고정하여 뒤 스크롤을 잠그고 닫을 때 원래 스크롤 좌표로 복원. iOS Safari/Android 키보드 실기기 화면 재확인은 **미완료**.
+2. 제품 추천은 `canRecommendProduct(item)`에서 `type=item` 및 신청·수당·지원금·검진 등 제목 필터로 제한하고 편집 UI/추천 페이지 접근 양쪽을 보호. 일부 혼합 물품/복지명칭의 단어 경계 검토는 추후 가능.
+3. 홈에는 6가지 숫자 서머리: 전체 준비, 완료, 남은 준비, 14일 내 확인, 실제 지출, 추가 예상 비용. 상단 메뉴 중복 없음. 홈 자체 완료율 그래프는 계속 제외하고 체크 탭에서만 제공.
+4. 가족 암호화 설정의 아이 이름·출생일·출산예정일에서 실제 경과일·만 나이·생후 개월/잔여 일수 또는 출산 D-day 계산. 생년월일 미입력 시 설정 유도. 개인정보는 공개 소스에 삽입하지 않음.
+5. 자동 검사는 실제 모바일 렌더링 검증과 별개. Google Sheets 최초 등록/재로그인/다른 기기 동기화도 실사용 검증 전. PIN 캐시와 스토리지 값의 호환성은 유지.
+
+**릴리스:** `1.3.2`. 최신 화면: https://hossea123456789-design.github.io/FAMILY-BABY-CHECK/?v=1.3.2
 
 ## 3. 사용자 피드백과 변경 과정
 
