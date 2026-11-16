@@ -3,13 +3,12 @@
  * 기존 '유하 육아 도구 모음'과 분리: 수면, 식사, 양치, 발달 관찰, 일일/주간 루틴 없음.
  * 미래 준비/일정, 예상·실제 구매 비용에만 집중한 24~36개월 시작 프리셋.
  */
-const BABY_PREP_TODDLER_SEED_VERSION = '2026-11-12-toddler-roadmap-v3';
+const BABY_PREP_TODDLER_SEED_VERSION = '2026-11-16-toddler-vaccinations-v1';
 // 이름|분류|기준 월령(빈 문자열 가능)|예시 목표 날짜(빈 문자열 가능)|담당|안내
 // 목표일은 법정 마감일이 아닌 '미리 확인' 일정이며, 월령 날짜는 앱에 입력한 출생일 기준으로 자동 산출됩니다.
 const TODDLER_ROADMAP_TASKS = [
   ['4차 영유아 건강검진 예약·수검 여부 확인','검진·의료 일정',23,'','함께','4차 건강검진은 생후 18~24개월. 수검을 이미 했다면 완료로 표시. 예약 목표 월령이며 법정 마감일 아님.'],
   ['1차 영유아 구강검진 예약·수검 여부 확인','검진·의료 일정',21,'','함께','1차 구강검진은 생후 18~29개월. 완료했다면 체크만 해 두세요.'],
-  ['예방접종 기록에서 미완료·다음 일정 확인','검진·의료 일정','', '2026-11-28','함께','예방접종도우미 등 기존 접종 수첩으로 완료 여부 확인. 이미 접종한 항목은 반복하지 않음.'],
   ['5차 영유아 건강검진 준비','검진·의료 일정',32,'','함께','5차는 생후 30~36개월. 예상 시작 시기에 맞춰 예약; 실제 자격 기간 확인.'],
   ['2차 영유아 구강검진 준비','검진·의료 일정',33,'','함께','2차 구강검진은 생후 30~41개월. 예약 일정은 직접 수정 가능.'],
   ['새 학기 어린이집 반배정·일정 확인','어린이집·교육','','2027-02-05','함께','반배정 통지, 적응 일정, 반별 필수 준비물, 보육료 관련 안내 확인.'],
@@ -50,5 +49,5 @@ function babyPrepToddlerData(){
   const tasks=TODDLER_ROADMAP_TASKS.filter(([title])=>!retired.has(title)).map(([title,section,dueMonth,dueDate,owner,notes])=>({...base,id:'toddler-roadmap-'+(++seq),title,section,type:'task',priority:'high',dueMonth:dueMonth===''?null:dueMonth,dueDate,owner,notes}));
   const goods=TODDLER_ROADMAP_GOODS.filter(([title])=>!retired.has(title)).map(([title,section,dueMonth,dueDate,notes])=>({...base,id:'toddler-goods-'+(++seq),title,section,type:'item',dueMonth:dueMonth===''?null:dueMonth,dueDate,notes}));
   const recommendations=BABY_PREP_RECOMMENDATIONS.curatedGoods.map(x=>({...base,id:'curated-'+x.id,title:x.title,section:x.section,type:'item',dueMonth:x.month,dueDate:'',notes:x.notes,recommendationId:x.recId}));
-  return {schema:3,seedVersion:BABY_PREP_TODDLER_SEED_VERSION,profile:'toddler',settings:{dueDate:'',babyName:'',budget:0},sections,items:[...tasks,...goods,...recommendations]};
+  return {schema:3,seedVersion:BABY_PREP_TODDLER_SEED_VERSION,profile:'toddler',settings:{dueDate:'',babyName:'',budget:0},sections,items:[...tasks,...goods,...recommendations],vaccinations:{records:{},jeType:'unknown'}};
 }
