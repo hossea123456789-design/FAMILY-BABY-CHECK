@@ -14,7 +14,7 @@ const ctx={console,TextEncoder,TextDecoder,crypto:crypto.webcrypto,
  window:{BABY_PREP_CONFIG:{},addEventListener(){}},
  setTimeout,clearTimeout,Date,Uint8Array,URL,Math};
 vm.createContext(ctx);
-for(const f of ['seed.js','toddler-seed.js','recommendations.js','benefits.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
+for(const f of ['seed.js','toddler-seed.js','recommendations.js','benefits.js','vaccinations.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx);
 const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
 assert(source.includes(' init();\n})();'),'앱 시작 진입점을 찾지 못했습니다. 테스트 스크립트를 확인하세요.');
 vm.runInContext(source.replace(' init();\n})();',' globalThis.__testHooks={S,dueOf,budget,addMonthsClamped,ageInMonths,readPreferredFamily,selectFamily,quickNewItem,renderTabs,renderChecklistProgress,renderHome,babyProfileSummary,canRecommendProduct,modal,closeModal,openEditor,cleanData,reconcileToddlerCatalog,recommendFor,recommendationAge,recommendationLine,renderReco,isRetiredPristine,benefitContext,benefitVisible,benefitDue,benefitState,benefitStats,renderBenefits,benefitCard,saveBenefitStatus,refreshMeta,submitAuth,derive,encryptPayload,storageSet,cacheKey,refreshFromServer,Bridge};\n})();'),ctx);
@@ -22,12 +22,15 @@ const newborn=vm.runInContext('babyPrepInitialData()',ctx);
 const roadmap=vm.runInContext('babyPrepToddlerData()',ctx);
 const hooks=ctx.__testHooks;
 assert.equal(newborn.items.length,90);
-assert.equal(roadmap.items.length,27);
-assert.equal(roadmap.items.filter(i=>i.type==='task').length,16);
+assert.equal(roadmap.items.length,26);
+assert.equal(roadmap.items.filter(i=>i.type==='task').length,15);
 assert.equal(roadmap.items.filter(i=>i.type==='item').length,11);
 assert(roadmap.items.every(i=>i.repeat==='none'));
 assert.equal(roadmap.settings.babyName,'');
 assert.equal(roadmap.settings.dueDate,'');
+assert.equal(roadmap.vaccinations.jeType,'unknown');
+assert.equal(Object.keys(roadmap.vaccinations.records).length,0,'공개 시드에 실제 개인 접종 기록 금지');
+assert(!roadmap.items.some(i=>i.title==='예방접종 기록에서 미완료·다음 일정 확인'),'독립 예방접종 화면을 쓰므로 중복 확인항목 제거');
 assert(!roadmap.items.some(x=>x.title==='친척에게 받을 물품·중고 물품 목록 정리'),'의미 없는 가족 물품 정리 태스크 제거');
 assert(!roadmap.items.some(x=>x.title==='분기별 큰 육아 지출·예산 계획'),'중복된 추상적 예산 계획 제거');
 assert(roadmap.items.some(x=>x.recommendationId==='first-cars'),'18개월 이상 자동차 구매 후보를 실제 체크리스트에 포함');
@@ -43,6 +46,22 @@ price.actual=12000;price.estimate=35000;price.acquisition='buy';
 assert.equal(hooks.budget().spent,12000);
 assert.equal(hooks.budget().needed,35000);
 price.acquisition='gift';assert.equal(hooks.budget().needed,0);
+// 2026 국가예방접종: 완료 1차 접종의 실제 날짜를 다음 차수 계산에 반영한다.
+const vaccine=vm.runInContext('BABY_PREP_VACCINES',ctx);
+assert(vaccine.validDate('2026-11-16'));
+assert(!vaccine.validDate('2026-02-30'),'존재하지 않는 날짜 차단');
+const vaccineRecords={'hepa-1':{date:'2026-05-16'},'flu-2026':{date:'2026-09-28'}};
+const vaccineSchedule=vaccine.plan('2025-03-23',vaccineRecords,'unknown',2026);
+assert.equal(vaccineSchedule.find(i=>i.id==='hepa-2').earliest,'2026-11-16','A형간염 6개월 간격');
+assert(vaccineSchedule.some(i=>i.id==='je-select'),'일본뇌염 유형 미확인 시 종류 선택 안내');
+assert(!vaccineSchedule.some(i=>i.id==='ij-2'||i.id==='lj-2'),'백신 종류 확인 없이 일본뇌염 2차 확정 금지');
+assert(vaccineSchedule.some(i=>i.id==='flu-2027'),'올해 독감 완료 시 다음 절기 표시');
+const inactive=vaccine.plan('2025-03-23',{'ij-1':{date:'2026-11-16'},'ij-2':{date:'2026-12-16'}},'inactivated',2026);
+assert.equal(inactive.find(i=>i.id==='ij-3').earliest,'2027-11-16','일본뇌염 2차 후 11개월');
+const live=vaccine.plan('2025-03-23',{'lj-1':{date:'2026-11-16'}},'live',2026);
+assert.equal(live.find(i=>i.id==='lj-2').earliest,'2027-11-16','생백신 1차 후 12개월');
+assert(!live.some(i=>i.id==='ij-4'),'서로 다른 일본뇌염 백신 일정을 혼용하지 않음');
+assert.equal(new Set([...vaccine.allowedIds]).size,vaccine.allowedIds.size);
 // 기기별 가족 선택 복원: 선택 코드는 로컬에 저장하지만 PIN은 저장하지 않는다.
 
 // Curated catalog shows actual product names and age-gates rather than generic request-copy buttons.
@@ -232,7 +251,7 @@ const view=hooks.renderBenefits();
 assert(view.includes('가족 혜택')&&view.includes('공식 안내'),'혜택 화면 및 공식 출처 표시');
 console.log('PASS: 25 benefits, national + Seoul + Gyeonggi, age/stage/area gates, month-start deadline, safe legacy migration');
 console.log('PASS: top-only navigation, checklist-only progress, task-first home, compact editing');
-console.log('PASS: newborn 90, curated toddler 27, month dates, cost, per-device family selection and recovery');
+console.log('PASS: newborn 90, curated toddler 26, month dates, cost, per-device family selection and recovery');
 
 async function testInstantLocalUnlock(){
   // Derive the same AES-GCM key used in production without weakening PBKDF2.
@@ -268,7 +287,7 @@ async function testInstantLocalUnlock(){
   assert.equal(nodes.mainScreen.classList.contains('hidden'),false,'서버 응답이 없어도 저장된 암호화 기록을 즉시 개방');
   assert.equal(nodes.authScreen.classList.contains('hidden'),true);
   assert.equal(hooks.S.revision,8);
-  assert.equal(hooks.S.data.items.length,27,'캐시를 AES-GCM 복호화하여 정확한 가족 데이터 복원');
+  assert.equal(hooks.S.data.items.length,26,'캐시를 AES-GCM 복호화하여 정확한 가족 데이터 복원');
   assert.equal(serverCalls,1,'잠금 해제 뒤 최신 서버 자료를 백그라운드에서 확인');
   assert.equal(nodes.syncMini.dataset.state,'loading','서버 확인 중에는 완료 상태를 표시하지 않음');
   // Never claim server sync succeeded while backend call is still pending.
