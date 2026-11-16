@@ -61,6 +61,7 @@ assert.equal(inactive.find(i=>i.id==='ij-3').earliest,'2027-10-10','일본뇌염
 const live=vaccine.plan('2025-04-11',{'lj-1':{date:'2026-10-10'}},'live',2026);
 assert.equal(live.find(i=>i.id==='lj-2').earliest,'2027-10-10','생백신 1차 후 12개월');
 assert(!live.some(i=>i.id==='ij-4'),'서로 다른 일본뇌염 백신 일정을 혼용하지 않음');
+assert(vaccine.allowedIds.has('flu-2025-1')&&vaccine.allowedIds.has('flu-2025-2')&&vaccine.allowedIds.has('flu-2026')&&vaccine.allowedIds.has('flu-2027'),'증명서 독감 1·2차 및 연간 접종 기록을 import 허용');
 assert.equal(new Set([...vaccine.allowedIds]).size,vaccine.allowedIds.size);
 // 기기별 가족 선택 복원: 선택 코드는 로컬에 저장하지만 PIN은 저장하지 않는다.
 
