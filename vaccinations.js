@@ -12,6 +12,12 @@ const BABY_PREP_VACCINES=(()=>{
     'rota-1','rota-2','rota-3','ij-1','ij-2','ij-3','ij-4','ij-5','lj-1','lj-2',
     'tdap-6','hpv-1','hpv-2'
   ]);
+  // 독감은 매년 차수가 새로 생기므로 연도별 ID를 접종 파일 및 수동 기록에 허용합니다.
+  for(let y=2024;y<=2060;y++){
+    allowedIds.add('flu-'+y);
+    allowedIds.add('flu-'+y+'-1');
+    allowedIds.add('flu-'+y+'-2');
+  }
   const validDate=value=>{
     if(typeof value!=='string'||!/^(\d{4})-(\d\d)-(\d\d)$/.test(value))return false;
     const d=new Date(value+'T12:00:00');
