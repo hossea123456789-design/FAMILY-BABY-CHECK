@@ -122,7 +122,7 @@
  const repeatLabel=i=>({daily:'매일',weekly:'매주',monthly:'매월'})[i.repeat]||'';
  const stamp=()=>Date.now();
  const uid=()=>crypto.randomUUID?.()||'id-'+stamp()+'-'+Math.random().toString(36).slice(2);
- const cleanData=d=>({schema:3,profile:d?.profile||'newborn',seedVersion:d?.seedVersion||BABY_PREP_SEED_VERSION,settings:{...{dueDate:'',birthDate:'',babyName:'',budget:0,residenceRegion:'unknown',residenceCity:''},...(d?.settings||{})},sections:Array.isArray(d?.sections)?d.sections:['출산 가방','집안 준비','서류·일정','출산 후'],items:Array.isArray(d?.items)?d.items:[],benefits:(d?.benefits&&typeof d.benefits==='object'&&!Array.isArray(d.benefits))?d.benefits:{}});
+ const cleanData=d=>({schema:3,profile:d?.profile||'newborn',seedVersion:d?.seedVersion||BABY_PREP_SEED_VERSION,settings:{...{dueDate:'',birthDate:'',babyName:'',budget:0,residenceRegion:'unknown',residenceCity:''},...(d?.settings||{})},sections:Array.isArray(d?.sections)?d.sections:['출산 가방','집안 준비','서류·일정','출산 후'],items:Array.isArray(d?.items)?d.items:[],benefits:(d?.benefits&&typeof d.benefits==='object'&&!Array.isArray(d.benefits))?d.benefits:{},vaccinations:(d?.vaccinations&&typeof d.vaccinations==='object'&&!Array.isArray(d.vaccinations))?d.vaccinations:{records:{},jeType:'unknown'}});
  function cacheKey(family=S.family){return 'baby-prep-secure-v2-'+family}
  function localRowKey(family=S.family){return 'baby-prep-preview-v2-'+family}
  function storageGet(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
@@ -432,7 +432,7 @@
    if(!S.data||!isToddler()||!Array.isArray(S.data.items))return false;
    let changed=false;
    for(const item of S.data.items){
-     if(isRetiredPristine(item)){item.deleted=true;item.updatedAt=stamp();changed=true}
+     if(isRetiredPristine(item)||(isPristineLegacyItem(item)&&item.title==='예방접종 기록에서 미완료·다음 일정 확인')){item.deleted=true;item.updatedAt=stamp();changed=true}
    }
    for(const recommended of catalog().curatedGoods||[]){
      const id='curated-'+recommended.id;
@@ -610,6 +610,7 @@
      <div class="card home-tasks">${tasks}</div>
      <button class="primary home-quick-add" type="button" data-action="quick-add" data-section="${firstSection}">＋ 새 준비 항목 추가</button>
      <div class="home-shortcuts">
+        ${isToddler()?`<button class="home-shortcut" data-action="route" data-route="timeline"><span>💉</span><span><strong>국가예방접종</strong><small>예정 차수·실제 접종 기록</small></span><b aria-hidden="true">›</b></button>`:""}
        <button type="button" class="home-shortcut" data-action="route" data-route="benefits"><span>🎁</span><span><strong>가족 혜택</strong><small>신청·자격 미확인 ${benefitCount}건</small></span><b aria-hidden="true">›</b></button>
        <button type="button" class="home-shortcut" data-action="route" data-route="budget"><span>₩</span><span><strong>예산 자세히 보기</strong><small>실제 지출·예정 비용 및 항목별 내역</small></span><b aria-hidden="true">›</b></button>
      </div>${!S.backend?'<p class="warning">이 기기에서만 저장되는 미리보기 모드입니다.</p>':''}
@@ -653,7 +654,57 @@
    <p class="muted-small">${all.length}개 항목 · 체크하면 완료, 항목을 누르면 가격·가족 지원·제품명을 입력할 수 있습니다.</p>
    ${Object.keys(grouped).length?Object.entries(grouped).map(([name,list])=>`<section><div class="inline"><h3 class="subhead">${escape(name)}</h3><span class="muted-small">${list.filter(doneNow).length}/${list.length}</span></div><div class="card">${list.map(renderItemRow).join('')}</div></section>`).join(''):'<div class="empty">조건에 해당하는 항목이 없습니다.</div>'}`;
  }
- function renderTimeline(){const due=S.data.settings.dueDate,items=activeItems().filter(i=>i.status!=='skipped').sort((a,b)=>(dueOf(a)||'9999').localeCompare(dueOf(b)||'9999')||((a.dueOffset||0)-(b.dueOffset||0)));const undone=items.filter(i=>!doneNow(i));const toddler=isToddler();const taskSection=toddler?'검진·의료 일정':'서류·일정';return `<div class="inline"><h2 class="section-title">📅 다음 일정</h2><button class="secondary" data-action="export-ics">캘린더 내보내기</button></div>${due?`<p class="help-block">${toddler?'아이 출생일':'출산예정일'} ${escape(due)} 기준입니다. 개별 목표일은 편집할 수 있고, 검진 및 지원 정책의 법정 기한과는 다를 수 있습니다.</p>`:`<div class="warning">${toddler?'출생일':'출산예정일'}을 등록해야 정확한 날짜를 계산할 수 있습니다.</div>`}<div class="inline"><h3 class="subhead">미완료 준비 일정 ${undone.length}개</h3><button class="link-button" data-action="add" data-section="${taskSection}" data-kind="task">+ 일정 등록</button></div><div class="timeline">${undone.length?undone.map(i=>`<div class="card ${dueOf(i)&&daysUntil(dueOf(i))<0?'late':''}"><div class="inline"><strong>${escape(dueOf(i)||dueHint(i))}</strong><span class="chip">${escape(i.owner||'함께')}${repeatLabel(i)?' · '+repeatLabel(i):''}</span></div><div class="item-row"><input type="checkbox" class="item-check" data-action="toggle" data-id="${escape(i.id)}"><div class="item-main" data-action="edit" data-id="${escape(i.id)}"><div class="item-name">${escape(i.title)}</div><p class="muted-small">${escape(i.section)}</p></div><button class="mini-btn" data-action="edit" data-id="${escape(i.id)}">수정</button></div></div>`).join(''):'<div class="empty">남은 일정이 없습니다.</div>'}</div><p class="tiny-note">캘린더 파일(.ics)을 휴대폰에 가져오면 일회성 일정에 7일 전·1일 전 알림이 포함됩니다. 앱 자체에서 백그라운드 푸시를 보내지는 않습니다. 완료한 일회성 일정도 캘린더에 포함될 수 있으니 확인하세요.</p>`}
+ 
+ function vaxState(){const v=S.data?.vaccinations||{};return {records:v.records&&typeof v.records==='object'&&!Array.isArray(v.records)?v.records:{},jeType:['live','inactivated'].includes(v.jeType)?v.jeType:'unknown'}}
+ function vaxPlan(){const v=vaxState();return BABY_PREP_VACCINES.plan(S.data?.settings?.dueDate,v.records,v.jeType)}
+ function renderVaccinations(){
+   if(!isToddler())return '';
+   const v=vaxState(),completed=Object.values(v.records).filter(r=>BABY_PREP_VACCINES.validDate(r?.date)).length;
+   const cards=vaxPlan().filter(x=>!x.done).slice(0,12).map(p=>{
+     const day=(p.needsPrior?'선행 차수 입력 후 확정 · 월령 기준 ':p.approximate?'예상 ':'')+p.earliest;
+     const state=p.latest&&today()>=p.latest?'기준 시기 경과':p.earliest<=today()?'접종 시기 확인':'향후 예정';
+     return '<div class="vaccine-row"><div><strong>'+escape(p.title)+'</strong><p class="muted-small">'+escape(day)+' · '+escape(state)+'</p><p class="tiny-note">'+escape(p.note)+'</p></div>'+
+       (p.id==='je-select'?'<span class="chip">유형 선택 필요</span>':'<button class="mini-btn" data-action="vax-edit" data-dose="'+escape(p.id)+'">접종일 입력</button>')+'</div>';
+   }).join('');
+   return '<section class="vaccine-section"><div class="inline"><h2 class="section-title">💉 국가예방접종</h2><a class="link-button" href="'+escape(BABY_PREP_VACCINES.SOURCE)+'" rel="noopener noreferrer" target="_blank">공식 안내 ↗</a></div>'+
+   '<p class="muted-small">2026년 지침 기준 · 접종일 기록 '+completed+'건</p>'+
+   (!S.data.settings.dueDate?'<div class="warning">가족 설정에 아이 출생일을 등록하면 날짜가 계산됩니다.</div>':'')+
+   '<div class="vaccine-toolbar"><label class="field">일본뇌염 백신 종류<select id="vaccineJeType"><option value="unknown" '+(v.jeType==='unknown'?'selected':'')+'>미확인</option><option value="inactivated" '+(v.jeType==='inactivated'?'selected':'')+'>불활성화 · 총 5회</option><option value="live" '+(v.jeType==='live'?'selected':'')+'>약독화 생백신 · 총 2회</option></select></label>'+
+   '<button type="button" class="secondary" data-action="vax-import">접종증명서 내역 가져오기</button><input id="vaccineFile" class="hidden" type="file" accept=".json,application/json" aria-label="접종기록 JSON 가져오기"></div>'+
+   '<div class="vaccine-list">'+(cards||'<div class="empty">예정된 접종이 없습니다.</div>')+'</div>'+
+   '<p class="tiny-note">실제 완료한 차수는 접종일을 등록하면 예정 목록에서 제외됩니다. 일본뇌염 차수와 독감·HPV의 향후 지원은 백신 종류와 해당 연도 국가 지침을 재확인해야 합니다.</p></section>';
+ }
+ function openVaxEditor(id){
+   if(!isToddler()||!BABY_PREP_VACCINES.allowedIds.has(id))return toast('일본뇌염 종류를 먼저 선택해 주세요.');
+   const old=vaxState().records[id],name=vaxPlan().find(p=>p.id===id)?.title||id;
+   modal('접종일 입력 · '+name,'<form id="vaxForm"><input type="hidden" name="dose" value="'+escape(id)+'"><label class="field">실제 접종일<input name="date" type="date" required value="'+escape(old?.date||today())+'"></label><p class="tiny-note">증명서나 병원 접종 기록의 실제 날짜를 입력합니다.</p><div class="form-actions"><button class="primary" type="submit">기록 저장</button>'+(old?.date?'<button class="danger" type="button" data-action="vax-remove" data-dose="'+escape(id)+'">기록 삭제</button>':'')+'<button class="secondary" data-action="close" type="button">취소</button></div></form>');
+ }
+ function saveVaxRecord(e){
+   e.preventDefault();const f=new FormData(e.target),id=String(f.get('dose')||''),date=String(f.get('date')||'');
+   if(!isToddler()||!BABY_PREP_VACCINES.allowedIds.has(id)||!BABY_PREP_VACCINES.validDate(date)||date>today())return toast('접종 종류와 실제 날짜를 확인해 주세요.');
+   const v=vaxState();S.data.vaccinations={...v,records:{...v.records,[id]:{date}}};closeModal();markDirty();toast('접종일 암호화 저장 중');
+ }
+ function removeVaxRecord(id){
+   if(!BABY_PREP_VACCINES.allowedIds.has(id)||!confirm('이 접종 기록을 삭제하시겠습니까?'))return;
+   const v=vaxState(),records={...v.records};delete records[id];S.data.vaccinations={...v,records};closeModal();markDirty();
+ }
+ async function importVaxFile(file){
+   if(!isToddler()||!file)return;
+   try{
+     if(file.size>100000)throw Error('100KB 이하 파일만 허용됩니다.');
+     const data=JSON.parse(await file.text());
+     if(data?.schema!=='family-baby-vaccinations/v1'||!Array.isArray(data.records)||!data.records.length||data.records.length>80)throw Error('접종기록 파일 형식이 아닙니다.');
+     const records={};
+     for(const r of data.records){
+       if(!r||!BABY_PREP_VACCINES.allowedIds.has(r.id)||!BABY_PREP_VACCINES.validDate(r.date)||r.date>today()||records[r.id])throw Error('접종 종류·날짜·중복 여부를 확인하세요.');
+       records[r.id]={date:r.date};
+     }
+     const v=vaxState(),changed=Object.keys(records).filter(id=>v.records[id]?.date&&v.records[id].date!==records[id].date).length;
+     if(!confirm(Object.keys(records).length+'건의 완료 접종을 현재 가족 공간에 추가합니다.'+(changed?' 기존 날짜 '+changed+'건을 변경합니다.':'')+' 기존 체크리스트와 혜택은 유지됩니다. 계속하시겠습니까?'))return;
+     S.data.vaccinations={...v,records:{...v.records,...records}};markDirty();toast(Object.keys(records).length+'건의 접종내역을 암호화 저장합니다.');
+   }catch(e){toast('접종기록 불러오기 실패: '+e.message)}
+ }
+ function renderTimeline(){const due=S.data.settings.dueDate,items=activeItems().filter(i=>i.status!=='skipped').sort((a,b)=>(dueOf(a)||'9999').localeCompare(dueOf(b)||'9999')||((a.dueOffset||0)-(b.dueOffset||0)));const undone=items.filter(i=>!doneNow(i));const toddler=isToddler();const taskSection=toddler?'검진·의료 일정':'서류·일정';return `${renderVaccinations()}<div class="inline"><h2 class="section-title">📅 다음 일정</h2><button class="secondary" data-action="export-ics">캘린더 내보내기</button></div>${due?`<p class="help-block">${toddler?'아이 출생일':'출산예정일'} ${escape(due)} 기준입니다. 개별 목표일은 편집할 수 있고, 검진 및 지원 정책의 법정 기한과는 다를 수 있습니다.</p>`:`<div class="warning">${toddler?'출생일':'출산예정일'}을 등록해야 정확한 날짜를 계산할 수 있습니다.</div>`}<div class="inline"><h3 class="subhead">미완료 준비 일정 ${undone.length}개</h3><button class="link-button" data-action="add" data-section="${taskSection}" data-kind="task">+ 일정 등록</button></div><div class="timeline">${undone.length?undone.map(i=>`<div class="card ${dueOf(i)&&daysUntil(dueOf(i))<0?'late':''}"><div class="inline"><strong>${escape(dueOf(i)||dueHint(i))}</strong><span class="chip">${escape(i.owner||'함께')}${repeatLabel(i)?' · '+repeatLabel(i):''}</span></div><div class="item-row"><input type="checkbox" class="item-check" data-action="toggle" data-id="${escape(i.id)}"><div class="item-main" data-action="edit" data-id="${escape(i.id)}"><div class="item-name">${escape(i.title)}</div><p class="muted-small">${escape(i.section)}</p></div><button class="mini-btn" data-action="edit" data-id="${escape(i.id)}">수정</button></div></div>`).join(''):'<div class="empty">남은 일정이 없습니다.</div>'}</div><p class="tiny-note">캘린더 파일(.ics)을 휴대폰에 가져오면 일회성 일정에 7일 전·1일 전 알림이 포함됩니다. 앱 자체에서 백그라운드 푸시를 보내지는 않습니다. 완료한 일회성 일정도 캘린더에 포함될 수 있으니 확인하세요.</p>`}
  function renderBudget(){const B=budget(),groups=S.data.sections.map(section=>({section,items:activeItems().filter(i=>i.section===section)})).filter(x=>x.items.length);const limit=Number(S.data.settings.budget)||0;return `<div class="inline"><h2 class="section-title">💳 지출·예산</h2><button class="link-button" data-action="route" data-route="home">홈으로</button></div><div class="kpis"><div class="kpi"><span>지출 완료</span><strong>${fmt(B.spent)}</strong><small>실제로 지출한 총액</small></div><div class="kpi accent"><span>추가 예상 지출</span><strong>${fmt(B.needed)}</strong><small>미완료 중 직접 입력된 예상액</small></div><div class="kpi"><span>현재 합산 전망</span><strong>${fmt(B.total)}</strong><small>실제 + 추가 예상</small></div><div class="kpi"><span>비용 미기입 항목</span><strong>${B.missing}개</strong><small>예산에서 제외된 준비물</small></div></div><p class="warning" style="margin-top:12px">${isToddler()?'과거 구매 이력은 가져오지 않았습니다.':'2025년 원본 시트의 참고가격은 현재 예산에 자동 합산하지 않습니다.'} 예상 구매금액을 입력하지 않은 ${B.missing}개는 추가 비용이 생길 수 있습니다.</p>${limit?`<div class="hero"><strong>설정 예산 ${fmt(limit)}</strong><p>현재 전망 대비 여유 ${fmt(limit-B.total)}</p><div class="progress-track"><div style="width:${Math.min(100,Math.round(B.total/limit*100))}%"></div></div></div>`:''}<h3 class="subhead">항목별 집계</h3>${groups.map(g=>{const spent=g.items.reduce((s,i)=>s+(Number(i.actual)||0),0),estimated=g.items.filter(i=>!doneNow(i)&&i.status!=='skipped'&&i.acquisition!=='gift'&&i.acquisition!=='already').reduce((s,i)=>s+(Number(i.estimate)||0),0);return `<div class="card budget-row"><div><b>${escape(g.section)}</b><br><small>${g.items.length}개 항목</small></div><div class="right"><strong>${fmt(spent)}</strong><br><small>추가 예상 ${fmt(estimated)}</small></div></div>`}).join('')}<button class="secondary" data-action="export-csv">비용 CSV 추출</button><p class="tiny-note">CSV는 복호화된 개인정보가 포함될 수 있으므로 공개 GitHub 저장소에 올리지 마세요.</p>`}
 
  function recommendFor(item){
@@ -775,6 +826,9 @@
   case 'conflict-local':await resolveConflict('local');break;
   case 'export':await exportEncrypted();break;
   case 'import-backup':byId('backupFile')?.click();break;
+  case 'vax-import':byId('vaccineFile')?.click();break;
+  case 'vax-edit':openVaxEditor(el.dataset.dose);break;
+  case 'vax-remove':removeVaxRecord(el.dataset.dose);break;
   case 'export-ics':exportICS();break;
   case 'export-csv':exportCSV();break;
   case 'copy-reco':actionCopyReco(el.dataset.key);break;
@@ -786,6 +840,7 @@
  function submitAction(e){
    const formId=e.target.getAttribute('id');
    if(formId==='itemForm')return saveEditor(e);
+    if(formId==='vaxForm')return saveVaxRecord(e);
     if(formId==='quickAddForm')return saveQuickAdd(e);
    if(formId==='settingsForm'){e.preventDefault();const f=new FormData(e.target);S.data.settings={...S.data.settings,dueDate:String(f.get('dueDate')||''),birthDate:String(f.get('birthDate')||''),babyName:String(f.get('babyName')||'').trim(),residenceRegion:['seoul','gyeonggi','other'].includes(String(f.get('residenceRegion')))?String(f.get('residenceRegion')):'unknown',residenceCity:String(f.get('residenceCity')||'').trim().slice(0,40),budget:Math.max(0,Number(f.get('budget'))||0)};markDirty();toast('설정과 가족별 혜택 기준을 저장했습니다.');return}
    if(formId==='sectionForm'){e.preventDefault();const f=new FormData(e.target),name=String(f.get('section')||'').trim();if(!name)return;if(S.data.sections.includes(name))return toast('이미 있는 탭입니다.');if(S.data.sections.length>=30)return toast('탭은 최대 30개까지 만들 수 있습니다.');S.data.sections.push(name);S.route='section:'+name;markDirty();toast('새 탭을 추가했습니다.');return}
@@ -811,7 +866,15 @@
        toast('진행 상태 변경 · 암호화 자동 저장 중');
        return;
      }
-     if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='sectionFilter'){S.sectionFilter=e.target.value;S.route='all';render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
+     if(e.target.id==='vaccineJeType'&&isToddler()){
+        const v=vaxState(),next=e.target.value;
+        if(['unknown','inactivated','live'].includes(next)&&next!==v.jeType){
+          if(Object.keys(v.records).some(id=>/^(ij|lj)-/.test(id))&&!confirm('기존 일본뇌염 접종기록이 남아 있습니다. 백신 종류를 변경하시겠습니까?')){render();return}
+          S.data.vaccinations={...v,jeType:next};markDirty();
+        }return;
+      }
+      if(e.target.id==='vaccineFile'&&e.target.files?.[0]){void importVaxFile(e.target.files[0]);e.target.value='';return}
+      if(e.target.id==='listFilter'){S.filter=e.target.value;render()}if(e.target.id==='sectionFilter'){S.sectionFilter=e.target.value;S.route='all';render()}if(e.target.id==='backupFile'&&e.target.files?.[0]){importEncryptedFile(e.target.files[0]);e.target.value=''}});
    byId('modalClose').addEventListener('click',closeModal);byId('modal').addEventListener('click',e=>{if(e.target===byId('modal')&&!S.conflict)closeModal()});
    byId('lockBtn').addEventListener('click',()=>clickAction({target:{closest:()=>({dataset:{action:'lock'}})}}));
    byId('settingsBtn').addEventListener('click',()=>{
